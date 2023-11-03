@@ -4,10 +4,10 @@ import net.covers1624.lp.docker.DockerService;
 import net.covers1624.lp.docker.data.ContainerSummary;
 import net.covers1624.lp.docker.data.DockerContainer;
 import net.covers1624.lp.docker.data.DockerNetwork;
+import net.covers1624.lp.util.ConfigParser;
 import net.covers1624.quack.net.httpapi.curl4j.Curl4jHttpEngine;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.jetbrains.annotations.Nullable;
 
 import java.nio.file.Path;
 import java.util.*;
@@ -19,13 +19,14 @@ public class LabelProxy {
 
     private static final Logger LOGGER = LogManager.getLogger();
 
-    private static final String PREFIX = "LabelProxy";
+    public static final String PREFIX = "LabelProxy";
 
     private final Config config = Config.load(Path.of("./config.json"));
     private final Curl4jHttpEngine httpEngine = new Curl4jHttpEngine();
     private final DockerService docker = new DockerService(config, httpEngine);
 
     private final Map<String, ContainerConfiguration> containerConfigs = new HashMap<>();
+    private final Set<String> broken = new HashSet<>();
 
     public static void main(String[] args) {
         System.exit(new LabelProxy().mainI(args));
@@ -96,17 +97,20 @@ public class LabelProxy {
             seen.add(id);
 
             DockerContainer container = docker.inspectContainer(id);
-            if (!containerConfigs.containsKey(id) && container.config().hasLabelWithPrefix(PREFIX)) {
-                ContainerConfiguration containerConfiguration = parseConfiguration(container);
+            if (containerConfigs.containsKey(id) || broken.contains(id)) continue;
+            if (!container.config().hasLabelWithPrefix(PREFIX)) continue;
 
-                if (containerConfiguration == null) {
-                    LOGGER.error("Failed to build configuration for {}", id);
-                    continue;
-                }
+            try {
+                ContainerConfiguration containerConfiguration = ConfigParser.parse(container);
                 containerConfigs.put(id, containerConfiguration);
                 containersModified = true;
+            } catch (Throwable ex) {
+                LOGGER.error("Failed to build configuration for {}", id);
+                broken.add(id);
             }
         }
+        // Cleanup set, so it doesn't just fill up over time.
+        broken.removeIf(e -> !seen.contains(e));
 
         for (var iterator = containerConfigs.entrySet().iterator(); iterator.hasNext(); ) {
             Map.Entry<String, ContainerConfiguration> entry = iterator.next();
@@ -120,29 +124,5 @@ public class LabelProxy {
         if (containersModified) {
             LOGGER.info("Modifications found.");
         }
-    }
-
-    private @Nullable ContainerConfiguration parseConfiguration(DockerContainer container) {
-        LOGGER.info("Found new Container: {}", container.id());
-        if (!container.networkSettings().networks().containsKey(config.networkName)) {
-            LOGGER.info(" Container not attached to {} network. Attaching..", config.networkName);
-            docker.connectNetwork(config.networkName, container.id());
-        }
-
-        List<String> hosts = List.copyOf(container.config().getLabels(PREFIX + ".host").values());
-        String port = container.config().labels().getOrDefault(PREFIX + ".port", "80");
-        int portNum;
-        try {
-            portNum = Integer.parseInt(port);
-        } catch (NumberFormatException ignored) {
-            LOGGER.error("Invalid label '{}.port = {}'. Not a number.", PREFIX, port);
-            return null;
-        }
-
-        return new ContainerConfiguration(
-                container.id(),
-                hosts,
-                portNum
-        );
     }
 }
