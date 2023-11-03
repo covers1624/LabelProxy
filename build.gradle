@@ -1,0 +1,49 @@
+plugins {
+    id 'java'
+    id 'org.jetbrains.gradle.plugin.idea-ext' version '1.1.7'
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+    withSourcesJar()
+}
+
+group = 'net.covers1624'
+version = '1.0-SNAPSHOT'
+
+repositories {
+    mavenLocal()
+    mavenCentral()
+    maven { url 'https://maven.covers1624.net/' }
+}
+
+dependencies {
+    implementation 'org.apache.logging.log4j:log4j-core:2.21.1'
+    implementation 'org.apache.logging.log4j:log4j-slf4j2-impl:2.21.1'
+
+    implementation 'net.covers1624:Quack:0.4.10.1'
+    implementation 'net.covers1624:curl4j:2.1.3:libcurl'
+
+    implementation 'com.google.guava:guava:32.1.3-jre'
+    implementation 'com.google.code.gson:gson:2.10.1'
+
+    compileOnly 'org.jetbrains:annotations:23.1.0'
+    compileOnly 'com.google.code.findbugs:jsr305:3.0.2'
+
+    testImplementation platform('org.junit:junit-bom:5.9.1')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+}
+
+test {
+    useJUnitPlatform()
+}
+
+idea.project.settings {
+    delegateActions {
+        // Gradle runners are garbage and break frequently.
+        delegateBuildRunToGradle = false
+        testRunner = org.jetbrains.gradle.ext.ActionDelegationConfig.TestRunner.PLATFORM
+    }
+}
