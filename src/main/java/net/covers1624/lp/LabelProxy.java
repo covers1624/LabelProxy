@@ -17,6 +17,7 @@ import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import java.nio.file.Path;
 import java.security.Security;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Created by covers1624 on 1/11/23.
@@ -40,6 +41,8 @@ public class LabelProxy {
 
     private final Map<String, List<ContainerConfiguration>> containerConfigs = new HashMap<>();
     private final Set<String> broken = new HashSet<>();
+
+    private boolean running = true;
 
     public static void main(String[] args) {
         System.exit(new LabelProxy().mainI(args));
@@ -66,7 +69,19 @@ public class LabelProxy {
         //  - If All containers on domain say they want to _not_ use DNS
         //   - Insert temporary nginx config for .well-known endpoint, etc.
         // - Hot reload nginx.
-        scanContainers();
+        int counter = 0;
+        while (running) {
+            boolean oneHourTrigger = counter % TimeUnit.HOURS.toSeconds(1) == 0;
+            scanContainers();
+            if (oneHourTrigger) {
+                // letsEncrypt.expiryScan()
+            }
+            try {
+                Thread.sleep(TimeUnit.SECONDS.toMillis(1));
+            } catch (InterruptedException ignored) {
+            }
+            counter++;
+        }
 
         return 0;
     }
