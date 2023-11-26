@@ -22,13 +22,16 @@ public class Config {
 
     private transient @Nullable Path path;
 
-    public String dockerSocket = "/var/run/docker.sock";
-    public String networkName = "http";
-    public boolean createMissingNetwork = true;
-
+    public Docker docker = new Docker();
     public LetsEncrypt letsEncrypt = new LetsEncrypt();
-
     public List<CloudflareAuth> cloudflareAuths = new ArrayList<>();
+
+    public static class Docker {
+
+        public String socket = "/var/run/docker.sock";
+        public String network = "http";
+        public boolean createMissing = true;
+    }
 
     public static class LetsEncrypt {
 

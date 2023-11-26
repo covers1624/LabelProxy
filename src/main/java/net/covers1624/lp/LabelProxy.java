@@ -87,16 +87,16 @@ public class LabelProxy {
     }
 
     private boolean prepareNetwork() {
-        LOGGER.info("Preparing network {}..", config.networkName);
-        DockerNetwork network = docker.inspectNetwork(config.networkName);
+        LOGGER.info("Preparing network {}..", config.docker.network);
+        DockerNetwork network = docker.inspectNetwork(config.docker.network);
         if (network == null) {
             LOGGER.info(" Network does not exist.");
-            if (!config.createMissingNetwork) {
+            if (!config.docker.createMissing) {
                 LOGGER.error("Automatic network creation disabled. Either enable it or manually create the network.");
                 return false;
             }
             LOGGER.info(" Creating network..");
-            network = docker.createNetwork(config.networkName);
+            network = docker.createNetwork(config.docker.network);
             LOGGER.info("Network created! {}", network.id());
             return true;
         }
@@ -130,11 +130,11 @@ public class LabelProxy {
             LOGGER.info("New container found: {}", id);
 
             try {
-                DockerContainer.Network network = container.networkSettings().networks().get(config.networkName);
+                DockerContainer.Network network = container.networkSettings().networks().get(config.docker.network);
                 if (network == null) {
-                    LOGGER.info("Attaching container to {} network.", config.networkName);
-                    container = docker.connectNetwork(config.networkName, id);
-                    network = container.networkSettings().networks().get(config.networkName);
+                    LOGGER.info("Attaching container to {} network.", config.docker.network);
+                    container = docker.connectNetwork(config.docker.network, id);
+                    network = container.networkSettings().networks().get(config.docker.network);
                 }
 
                 List<ContainerConfiguration> containerConfiguration = ConfigParser.parse(container, network.ipAddress());

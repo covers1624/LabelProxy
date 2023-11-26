@@ -37,7 +37,7 @@ public class DockerService {
     public @Nullable DockerNetwork inspectNetwork(String name) {
         Curl4jEngineRequest request = httpEngine.newRequest()
                 .method("GET", null)
-                .unixSocket(config.dockerSocket)
+                .unixSocket(config.docker.socket)
                 .url("http://v1.25/networks/" + name);
         try (Curl4jEngineResponse resp = request.execute()) {
             if (resp.statusCode() == 404) return null;
@@ -58,7 +58,7 @@ public class DockerService {
                         "CheckDuplicates", true,
                         "Driver", "bridge"
                 )))
-                .unixSocket(config.dockerSocket)
+                .unixSocket(config.docker.socket)
                 .url("http://v1.25/networks/create");
         try (Curl4jEngineResponse resp = request.execute()) {
             if (resp.statusCode() != 201) throw new IllegalStateException("Expected 201 response. Got: " + resp.statusCode());
@@ -78,7 +78,7 @@ public class DockerService {
     public List<ContainerSummary> listContainers() {
         Curl4jEngineRequest request = httpEngine.newRequest()
                 .method("GET", null)
-                .unixSocket(config.dockerSocket)
+                .unixSocket(config.docker.socket)
                 .url("http://v1.25/containers/json");
         try (Curl4jEngineResponse resp = request.execute()) {
             if (resp.statusCode() != 200)
@@ -96,7 +96,7 @@ public class DockerService {
     public DockerContainer inspectContainer(String id) {
         Curl4jEngineRequest request = httpEngine.newRequest()
                 .method("GET", null)
-                .unixSocket(config.dockerSocket)
+                .unixSocket(config.docker.socket)
                 .url("http://v1.25/containers/" + id + "/json");
         try (Curl4jEngineResponse resp = request.execute()) {
             if (resp.statusCode() != 200) throw new IllegalStateException("Expected 200 response. Got: " + resp.statusCode());
@@ -115,7 +115,7 @@ public class DockerService {
                 .method("POST", jsonBody(Map.of(
                         "Container", container
                 )))
-                .unixSocket(config.dockerSocket)
+                .unixSocket(config.docker.socket)
                 .url("http://v1.25/networks/" + network + "/connect");
         try (Curl4jEngineResponse resp = request.execute()) {
             if (resp.statusCode() != 200) {
