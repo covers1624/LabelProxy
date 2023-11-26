@@ -76,22 +76,13 @@ public class DockerService {
     }
 
     public List<ContainerSummary> listContainers() {
-        return listContainers(false);
-    }
-
-    public List<ContainerSummary> listContainers(boolean labeled) {
-        String query = "?";
-        if (labeled) {
-            query += "filter=" + URLEncoder.encode("{\"label\": [\"LabelProxy.enable\"]}", StandardCharsets.UTF_8);
-        } else {
-            query = "all=true";
-        }
         Curl4jEngineRequest request = httpEngine.newRequest()
-                .method("POST", null)
+                .method("GET", null)
                 .unixSocket(config.dockerSocket)
-                .url("http://v1.25/containers/json" + query);
+                .url("http://v1.25/containers/json");
         try (Curl4jEngineResponse resp = request.execute()) {
-            if (resp.statusCode() != 200) throw new IllegalStateException("Expected 200 response. Got: " + resp.statusCode());
+            if (resp.statusCode() != 200)
+                throw new IllegalStateException("Expected 200 response. Got: " + resp.statusCode());
 
             WebBody body = resp.body();
             assert body != null;
