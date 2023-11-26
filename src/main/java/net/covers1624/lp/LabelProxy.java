@@ -6,7 +6,9 @@ import net.covers1624.lp.docker.data.ContainerSummary;
 import net.covers1624.lp.docker.data.DockerContainer;
 import net.covers1624.lp.docker.data.DockerNetwork;
 import net.covers1624.lp.letsencrypt.LetsEncryptService;
+import net.covers1624.lp.nginx.NginxService;
 import net.covers1624.lp.util.ConfigParser;
+import net.covers1624.quack.collection.FastStream;
 import net.covers1624.quack.net.httpapi.curl4j.Curl4jHttpEngine;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -34,6 +36,7 @@ public class LabelProxy {
     private final DockerService docker = new DockerService(config, httpEngine);
     private final CloudflareService cloudflare = new CloudflareService(config, httpEngine);
     private final LetsEncryptService letsEncrypt = new LetsEncryptService(config, cloudflare);
+    private final NginxService nginx = new NginxService(config, letsEncrypt);
 
     private final Map<String, List<ContainerConfiguration>> containerConfigs = new HashMap<>();
     private final Set<String> broken = new HashSet<>();
@@ -141,6 +144,11 @@ public class LabelProxy {
         }
         if (containersModified) {
             LOGGER.info("Modifications found.");
+            nginx.rebuild(
+                    FastStream.of(containerConfigs.values())
+                            .flatMap(e -> e)
+                            .toList()
+            );
         }
     }
 }
