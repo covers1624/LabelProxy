@@ -5,12 +5,15 @@ import net.covers1624.lp.docker.DockerService;
 import net.covers1624.lp.docker.data.ContainerSummary;
 import net.covers1624.lp.docker.data.DockerContainer;
 import net.covers1624.lp.docker.data.DockerNetwork;
+import net.covers1624.lp.letsencrypt.LetsEncryptService;
 import net.covers1624.lp.util.ConfigParser;
 import net.covers1624.quack.net.httpapi.curl4j.Curl4jHttpEngine;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
 
 import java.nio.file.Path;
+import java.security.Security;
 import java.util.*;
 
 /**
@@ -22,10 +25,15 @@ public class LabelProxy {
 
     public static final String PREFIX = "LabelProxy";
 
+    static {
+        Security.addProvider(new BouncyCastleProvider());
+    }
+
     private final Config config = Config.load(Path.of("./config.json"));
     private final Curl4jHttpEngine httpEngine = new Curl4jHttpEngine();
     private final DockerService docker = new DockerService(config, httpEngine);
     private final CloudflareService cloudflare = new CloudflareService(config, httpEngine);
+    private final LetsEncryptService letsEncrypt = new LetsEncryptService(config, cloudflare);
 
     private final Map<String, ContainerConfiguration> containerConfigs = new HashMap<>();
     private final Set<String> broken = new HashSet<>();

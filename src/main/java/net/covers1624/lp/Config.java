@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.annotations.JsonAdapter;
 import net.covers1624.quack.gson.JsonUtils;
+import net.covers1624.quack.gson.PathTypeAdapter;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
@@ -25,7 +26,17 @@ public class Config {
     public String networkName = "http";
     public boolean createMissingNetwork = true;
 
+    public LetsEncrypt letsEncrypt = new LetsEncrypt();
+
     public List<CloudflareAuth> cloudflareAuths = new ArrayList<>();
+
+    public static class LetsEncrypt {
+
+        @JsonAdapter (PathTypeAdapter.class)
+        public Path dir = Path.of("./letsencrypt");
+        public int dhParamBits = 4096;
+        public @Nullable String email;
+    }
 
     public static class CloudflareAuth {
 
