@@ -1,5 +1,6 @@
 package net.covers1624.lp;
 
+import net.covers1624.lp.cloudflare.CloudflareService;
 import net.covers1624.lp.docker.DockerService;
 import net.covers1624.lp.docker.data.ContainerSummary;
 import net.covers1624.lp.docker.data.DockerContainer;
@@ -24,6 +25,7 @@ public class LabelProxy {
     private final Config config = Config.load(Path.of("./config.json"));
     private final Curl4jHttpEngine httpEngine = new Curl4jHttpEngine();
     private final DockerService docker = new DockerService(config, httpEngine);
+    private final CloudflareService cloudflare = new CloudflareService(config, httpEngine);
 
     private final Map<String, ContainerConfiguration> containerConfigs = new HashMap<>();
     private final Set<String> broken = new HashSet<>();
