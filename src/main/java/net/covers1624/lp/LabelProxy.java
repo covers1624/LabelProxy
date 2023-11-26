@@ -35,7 +35,7 @@ public class LabelProxy {
     private final CloudflareService cloudflare = new CloudflareService(config, httpEngine);
     private final LetsEncryptService letsEncrypt = new LetsEncryptService(config, cloudflare);
 
-    private final Map<String, ContainerConfiguration> containerConfigs = new HashMap<>();
+    private final Map<String, List<ContainerConfiguration>> containerConfigs = new HashMap<>();
     private final Set<String> broken = new HashSet<>();
 
     public static void main(String[] args) {
@@ -109,6 +109,7 @@ public class LabelProxy {
             DockerContainer container = docker.inspectContainer(id);
             if (containerConfigs.containsKey(id) || broken.contains(id)) continue;
             if (!container.config().hasLabelWithPrefix(PREFIX)) continue;
+            LOGGER.info("New container found: {}", id);
 
             try {
                 DockerContainer.Network network = container.networkSettings().networks().get(config.networkName);
@@ -117,7 +118,8 @@ public class LabelProxy {
                     container = docker.connectNetwork(config.networkName, id);
                     network = container.networkSettings().networks().get(config.networkName);
                 }
-                ContainerConfiguration containerConfiguration = ConfigParser.parse(container);
+
+                List<ContainerConfiguration> containerConfiguration = ConfigParser.parse(container, network.ipAddress());
                 containerConfigs.put(id, containerConfiguration);
                 containersModified = true;
             } catch (Throwable ex) {
@@ -129,7 +131,7 @@ public class LabelProxy {
         broken.removeIf(e -> !seen.contains(e));
 
         for (var iterator = containerConfigs.entrySet().iterator(); iterator.hasNext(); ) {
-            Map.Entry<String, ContainerConfiguration> entry = iterator.next();
+            Map.Entry<String, List<ContainerConfiguration>> entry = iterator.next();
             String id = entry.getKey();
             if (seen.contains(id)) continue;
 

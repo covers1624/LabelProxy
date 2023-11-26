@@ -1,11 +1,10 @@
 package net.covers1624.lp.util;
 
 import net.covers1624.lp.ContainerConfiguration;
-import net.covers1624.lp.ContainerConfiguration.HostConfiguration;
 import net.covers1624.lp.docker.data.DockerContainer;
 import org.junit.jupiter.api.Test;
 
-import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -18,8 +17,10 @@ public class ConfigParserTests {
     @Test
     public void testBasics() {
         assertEquals(
-                config(
-                        new HostConfiguration(
+                List.of(
+                        new ContainerConfiguration(
+                                null,
+                                null,
                                 "abcd",
                                 8080,
                                 false,
@@ -34,7 +35,8 @@ public class ConfigParserTests {
                                 "LabelProxy.https_redir", "false",
                                 "LabelProxy.location", "/abcd",
                                 "LabelProxy.proxy_pass", "1234"
-                        ))
+                        )),
+                        "0.0.0.0"
                 )
         );
     }
@@ -42,15 +44,19 @@ public class ConfigParserTests {
     @Test
     public void testMultipleGroups() {
         assertEquals(
-                config(
-                        new HostConfiguration(
+                List.of(
+                        new ContainerConfiguration(
+                                null,
+                                null,
                                 "abcd",
                                 8080,
                                 false,
                                 "/abcd",
                                 "1234"
                         ),
-                        new HostConfiguration(
+                        new ContainerConfiguration(
+                                null,
+                                null,
                                 "1234",
                                 8181,
                                 false,
@@ -70,16 +76,13 @@ public class ConfigParserTests {
                                 "LabelProxy.g1.https_redir", "false",
                                 "LabelProxy.g1.location", "/1234",
                                 "LabelProxy.g1.proxy_pass", "abcd"
-                        ))
+                        )),
+                        "0.0.0.0"
                 )
         );
     }
 
     private static DockerContainer container(Map<String, String> labels) {
         return new DockerContainer(null, new DockerContainer.Config(labels), null);
-    }
-
-    private static ContainerConfiguration config(HostConfiguration... configs) {
-        return new ContainerConfiguration(null, Arrays.asList(configs));
     }
 }

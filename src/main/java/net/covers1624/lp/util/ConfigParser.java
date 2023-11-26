@@ -22,7 +22,7 @@ public class ConfigParser {
     private static final String DEFAULT_GROUP = "default";
     private static final Pattern REGEX = Pattern.compile("^" + PREFIX + "(?:\\.(?<group>.*))?\\.(?<keyword>.*)$");
 
-    public static ContainerConfiguration parse(DockerContainer container) {
+    public static List<ContainerConfiguration> parse(DockerContainer container, String ip) {
         Map<String, Map<String, String>> groups = new HashMap<>();
 
         Matcher matcher = REGEX.matcher("");
@@ -43,11 +43,13 @@ public class ConfigParser {
                     .put(keyword, entry.getValue());
         }
 
-        List<ContainerConfiguration.HostConfiguration> hostConfigs = new ArrayList<>();
+        List<ContainerConfiguration> configs = new ArrayList<>();
         for (Map.Entry<String, Map<String, String>> entry : groups.entrySet()) {
             String group = entry.getKey();
             Map<String, String> props = entry.getValue();
-            hostConfigs.add(new ContainerConfiguration.HostConfiguration(
+            configs.add(new ContainerConfiguration(
+                    container.id(),
+                    ip,
                     Objects.requireNonNull(props.get("host"), "'host' property required for group " + group),
                     Integer.parseInt(props.getOrDefault("port", "80")),
                     Boolean.parseBoolean(props.getOrDefault("https_redir", "true")),
@@ -56,6 +58,6 @@ public class ConfigParser {
             ));
         }
 
-        return new ContainerConfiguration(container.id(), hostConfigs);
+        return configs;
     }
 }
