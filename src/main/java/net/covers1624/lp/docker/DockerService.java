@@ -110,7 +110,7 @@ public class DockerService {
         }
     }
 
-    public void connectNetwork(String network, String container) {
+    public DockerContainer connectNetwork(String network, String container) {
         Curl4jEngineRequest request = httpEngine.newRequest()
                 .method("POST", jsonBody(Map.of(
                         "Container", container
@@ -121,6 +121,7 @@ public class DockerService {
             if (resp.statusCode() != 200) {
                 throw new IllegalStateException("Expected 201 response. Got: " + resp.statusCode());
             }
+            return inspectContainer(container);
         } catch (IOException ex) {
             throw new RuntimeException("Docker command failed.", ex);
         }

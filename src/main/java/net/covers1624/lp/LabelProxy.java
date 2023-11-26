@@ -111,6 +111,12 @@ public class LabelProxy {
             if (!container.config().hasLabelWithPrefix(PREFIX)) continue;
 
             try {
+                DockerContainer.Network network = container.networkSettings().networks().get(config.networkName);
+                if (network == null) {
+                    LOGGER.info("Attaching container to {} network.", config.networkName);
+                    container = docker.connectNetwork(config.networkName, id);
+                    network = container.networkSettings().networks().get(config.networkName);
+                }
                 ContainerConfiguration containerConfiguration = ConfigParser.parse(container);
                 containerConfigs.put(id, containerConfiguration);
                 containersModified = true;
