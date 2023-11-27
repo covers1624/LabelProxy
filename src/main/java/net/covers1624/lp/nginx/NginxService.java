@@ -56,8 +56,7 @@ public class NginxService {
 
         for (NginxHost host : hosts.values()) {
             markConfigPending(host);
-            NginxConfigGenerator configGenerator = new NginxConfigGenerator(config, letsEncrypt, host);
-            host.future = configGenerator.generate()
+            host.future = new NginxHttpConfigGenerator(letsEncrypt, host).generate()
                     .thenAccept(config -> {
                         host.config = config;
                         activateConfig(host);
