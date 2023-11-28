@@ -54,22 +54,6 @@ public class LabelProxy {
             return 1;
         }
 
-        // Main loop:
-        // - Detect new containers:
-        //  - Generate internal config
-        //  - Attach HTTP network
-        // - Detect old containers:
-        //  - Delete from internal config
-        // - Rebuild nginx configs for each container.
-        //  - Detect new certificates needed.
-        //   - Create internal certificate objects.
-        // - Check for any outdated or new certificates.
-        //  - Mark nginx config as pending awaiting certificates.
-        // - LetsEncrypt renew certificates.
-        //  - Cloudflare DNS by default for auth.
-        //  - If All containers on domain say they want to _not_ use DNS
-        //   - Insert temporary nginx config for .well-known endpoint, etc.
-        // - Hot reload nginx.
         int counter = 0;
         while (running) {
             boolean oneHourTrigger = counter % TimeUnit.HOURS.toSeconds(1) == 0;
