@@ -2,6 +2,7 @@ package net.covers1624.lp.docker;
 
 import com.google.gson.Gson;
 import net.covers1624.lp.Config;
+import net.covers1624.lp.LabelProxy;
 import net.covers1624.lp.docker.data.ContainerSummary;
 import net.covers1624.lp.docker.data.DockerContainer;
 import net.covers1624.lp.docker.data.DockerNetwork;
@@ -29,8 +30,8 @@ public class DockerService {
     private final Config config;
     private final Curl4jHttpEngine httpEngine;
 
-    public DockerService(Config config, Curl4jHttpEngine httpEngine) {
-        this.config = config;
+    public DockerService(LabelProxy proxy, Curl4jHttpEngine httpEngine) {
+        this.config = proxy.config;
         this.httpEngine = httpEngine;
     }
 

@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.annotations.JsonAdapter;
 import net.covers1624.lp.Config;
+import net.covers1624.lp.LabelProxy;
 import net.covers1624.lp.cloudflare.CloudflareService;
 import net.covers1624.lp.cloudflare.data.dns.CreateDNSRecordResponse;
 import net.covers1624.lp.cloudflare.data.dns.DnsRecord;
@@ -31,6 +32,8 @@ import java.nio.file.Path;
 import java.security.KeyPair;
 import java.security.cert.CertificateEncodingException;
 import java.security.cert.X509Certificate;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -52,6 +55,7 @@ public class LetsEncryptService {
     private final Map<String, CertInfo> certs = new HashMap<>();
     private final Map<String, CompletableFuture<CertInfo>> pending = new HashMap<>();
 
+    private final LabelProxy proxy;
     private final Config config;
     private final CloudflareService cloudflare;
 
@@ -62,8 +66,9 @@ public class LetsEncryptService {
     private final Session session;
     private final Account account;
 
-    public LetsEncryptService(Config config, CloudflareService cloudflare) {
-        this.config = config;
+    public LetsEncryptService(LabelProxy proxy, CloudflareService cloudflare) {
+        this.proxy = proxy;
+        this.config = proxy.config;
         this.cloudflare = cloudflare;
 
         dhParam = config.letsEncrypt.dir.resolve("dhparam.pem").toAbsolutePath();
@@ -122,9 +127,29 @@ public class LetsEncryptService {
         }
     }
 
+    public void expiryScan() {
+        Instant nextWeek = Instant.now()
+                .plus(7, ChronoUnit.DAYS);
+        synchronized (certs) {
+            for (CertInfo info : certs.values()) {
+                if (pending.containsKey(info.host)) continue;
+                if (!nextWeek.isAfter(info.expiresAt.toInstant())) continue;
+
+                renewCertificate(info);
+            }
+        }
+    }
+
     public CompletableFuture<CertInfo> getCertificates(String host) {
-        CertInfo ret = certs.get(host);
-        if (ret != null) return CompletableFuture.completedFuture(ret);
+        return getCertificates(host, false);
+    }
+
+    public CompletableFuture<CertInfo> getCertificates(String host, boolean force) {
+        CertInfo ret;
+        if (!force) {
+            ret = certs.get(host);
+            if (ret != null) return CompletableFuture.completedFuture(ret);
+        }
 
         synchronized (pending) {
             CompletableFuture<CertInfo> future = pending.get(host);
@@ -157,6 +182,16 @@ public class LetsEncryptService {
             pending.put(host, future);
             return future;
         }
+    }
+
+    private void renewCertificate(CertInfo info) {
+        LOGGER.info("Certificate for {} is about to expire. Renewing..", info.host);
+        getCertificates(info.host, true)
+                .thenAcceptAsync(proxy.nginx::onRenewCertificates)
+                .exceptionally(ex -> {
+                    LOGGER.error("Failed to regen certificates for {}", info.host, ex);
+                    return null;
+                });
     }
 
     private CertInfo requestCertificate(String host) throws AcmeException, IOException {

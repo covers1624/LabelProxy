@@ -1,6 +1,7 @@
 package net.covers1624.lp.nginx;
 
 import com.google.common.base.Charsets;
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import net.covers1624.lp.Config;
 import net.covers1624.lp.ContainerConfiguration;
 import net.covers1624.lp.LabelProxy;
@@ -17,6 +18,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.stream.Stream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
@@ -42,6 +45,7 @@ public class NginxService {
 
     private final Map<String, NginxHost> hosts = new HashMap<>();
     private final Map<String, CompletableFuture<Void>> pendingHosts = new HashMap<>();
+    private final ExecutorService NGINX_APPLY_EXECUTOR = Executors.newSingleThreadExecutor(new ThreadFactoryBuilder().setDaemon(true).setNameFormat("Nginx Config Applicator").build());
 
     public NginxService(LabelProxy proxy, LetsEncryptService letsEncrypt) {
         this.config = proxy.config;
@@ -75,6 +79,11 @@ public class NginxService {
         // Start up Nginx.
         nginxProcess = new NginxProcess(proxy, configDir, rootConfig, nginxPidFile);
         nginxProcess.start();
+    }
+
+    public void onRenewCertificates(LetsEncryptService.CertInfo newInfo) {
+        NginxHost host = hosts.get(newInfo.host());
+        buildConfig(host);
     }
 
     public void rebuild(Collection<ContainerConfiguration> configurations) {
@@ -123,34 +132,45 @@ public class NginxService {
         }
 
         for (NginxHost host : hosts.values()) {
-            host.future = new NginxHttpConfigGenerator(letsEncrypt, host).generate()
-                    .thenAccept(config -> {
-                        host.config = config;
-                        activateConfig(host);
-                    });
-            host.future.exceptionally(ex -> {
-                LOGGER.error("Fatal error generating nginx config for {}", host.host, ex);
+            buildConfig(host);
+        }
+
+        if (!deadHosts.isEmpty()) {
+            CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
+                LOGGER.info("Removing hosts: {}", deadHosts);
+                backupConfigs();
+                for (String deadHost : deadHosts) {
+                    try {
+                        Files.deleteIfExists(hostConfig(deadHost));
+                    } catch (IOException ex) {
+                        LOGGER.error("Failed to delete host config.", ex);
+                    }
+                }
+                try {
+                    nginxProcess.hotReload();
+                } catch (Throwable ex) {
+                    LOGGER.error("Nginx Hot reload failed!", ex);
+                }
+            }, NGINX_APPLY_EXECUTOR);
+            future.exceptionally(ex -> {
+                LOGGER.error("Failed to remove dead nginx hosts and reload.", ex);
                 return null;
             });
-            synchronized (pendingHosts) {
-                pendingHosts.put(host.host, host.future);
-            }
         }
-        if (!deadHosts.isEmpty()) {
-            LOGGER.info("Removing hosts: {}", deadHosts);
-            backupConfigs();
-            for (String deadHost : deadHosts) {
-                try {
-                    Files.deleteIfExists(hostConfig(deadHost));
-                } catch (IOException ex) {
-                    LOGGER.error("Failed to delete host config.", ex);
-                }
-            }
-            try {
-                nginxProcess.hotReload();
-            } catch (Throwable ex) {
-                LOGGER.error("Nginx Hot reload failed!", ex);
-            }
+    }
+
+    private void buildConfig(NginxHost host) {
+        host.future = new NginxHttpConfigGenerator(letsEncrypt, host).generate()
+                .thenAcceptAsync(config -> {
+                    host.config = config;
+                    activateConfig(host);
+                }, NGINX_APPLY_EXECUTOR);
+        host.future.exceptionally(ex -> {
+            LOGGER.error("Fatal error generating nginx config for {}", host.host, ex);
+            return null;
+        });
+        synchronized (pendingHosts) {
+            pendingHosts.put(host.host, host.future);
         }
     }
 
@@ -187,13 +207,6 @@ public class NginxService {
             return;
         }
 
-        // TODO:
-        //  On some common thread:
-        //  Archive old config version.
-        //  Write config.
-        //  Test nginx with config change.
-        //   If failure, report failed, restore config
-        //   If success, reload nginx /nginx -s reload
         synchronized (hosts) {
             hosts.put(host.host, host);
         }

@@ -33,12 +33,12 @@ public class LabelProxy {
     }
 
     public final Config config = Config.load(Path.of("./config.json"));
-    private final Curl4jHttpEngine httpEngine = new Curl4jHttpEngine();
-    private final DockerService docker = new DockerService(config, httpEngine);
-    private final CloudflareService cloudflare = new CloudflareService(config, httpEngine);
-    private final LetsEncryptService letsEncrypt = new LetsEncryptService(config, cloudflare);
+    public final Curl4jHttpEngine httpEngine = new Curl4jHttpEngine();
+    public final DockerService docker = new DockerService(this, httpEngine);
+    public final CloudflareService cloudflare = new CloudflareService(this, httpEngine);
+    public final LetsEncryptService letsEncrypt = new LetsEncryptService(this, cloudflare);
 
-    private final NginxService nginx = new NginxService(this, letsEncrypt);
+    public final NginxService nginx = new NginxService(this, letsEncrypt);
 
     private final Map<String, List<ContainerConfiguration>> containerConfigs = new HashMap<>();
     private final Set<String> broken = new HashSet<>();
@@ -75,7 +75,7 @@ public class LabelProxy {
             boolean oneHourTrigger = counter % TimeUnit.HOURS.toSeconds(1) == 0;
             scanContainers();
             if (oneHourTrigger) {
-                // letsEncrypt.expiryScan()
+                 letsEncrypt.expiryScan();
             }
             try {
                 Thread.sleep(TimeUnit.SECONDS.toMillis(1));

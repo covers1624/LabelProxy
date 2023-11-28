@@ -3,6 +3,7 @@ package net.covers1624.lp.cloudflare;
 import com.google.gson.Gson;
 import net.covers1624.lp.Config;
 import net.covers1624.lp.Config.CloudflareAuth;
+import net.covers1624.lp.LabelProxy;
 import net.covers1624.lp.cloudflare.data.CloudflareResponse;
 import net.covers1624.lp.cloudflare.data.dns.CreateDNSRecordResponse;
 import net.covers1624.lp.cloudflare.data.dns.DeleteDnsRecordResponse;
@@ -35,8 +36,8 @@ public class CloudflareService {
 
     private final Map<String, ZoneInfo> zones = new HashMap<>();
 
-    public CloudflareService(Config config, Curl4jHttpEngine httpEngine) {
-        this.config = config;
+    public CloudflareService(LabelProxy proxy, Curl4jHttpEngine httpEngine) {
+        this.config = proxy.config;
         this.httpEngine = httpEngine;
 
         if (config.cloudflareAuths.isEmpty()) {
