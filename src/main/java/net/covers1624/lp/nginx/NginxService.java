@@ -50,13 +50,6 @@ public class NginxService {
 
         tempDir = config.tempDir.resolve("nginx");
         Path logsDir = config.logsDir.resolve("nginx");
-        try {
-            Files.createDirectories(tempDir);
-            Files.createDirectories(logsDir);
-        } catch (IOException ex) {
-            throw new RuntimeException("Failed to make directories.", ex);
-        }
-
         configDir = config.nginx.dir.resolve("conf");
         nginxPidFile = config.nginx.dir.resolve("nginx.pid");
         nginxAccessLog = logsDir.resolve("access.log");
@@ -71,6 +64,14 @@ public class NginxService {
         // Generate a new root config file.
         Path rootConfig = generateRootConfig(configDir);
         hostConfigDir = rootConfig.resolveSibling(rootConfig.getFileName() + ".d");
+        try {
+            Files.createDirectories(tempDir);
+            Files.createDirectories(logsDir);
+            Files.createDirectories(hostConfigDir);
+        } catch (IOException ex) {
+            throw new RuntimeException("Failed to make directories.", ex);
+        }
+
         // Start up Nginx.
         nginxProcess = new NginxProcess(proxy, configDir, rootConfig, nginxPidFile);
         nginxProcess.start();
@@ -80,6 +81,7 @@ public class NginxService {
         LOGGER.info("Rebuilding Nginx configs..");
 
         Map<String, NginxHost> hosts = new LinkedHashMap<>();
+        Set<String> deadHosts = new HashSet<>();
         for (ContainerConfiguration configuration : configurations) {
             NginxHost host = hosts.computeIfAbsent(configuration.host(), NginxHost::new);
             host.containers.add(configuration);
@@ -99,8 +101,13 @@ public class NginxService {
                     iterator.remove();
                 }
             }
+            for (String host : this.hosts.keySet()) {
+                if (!hosts.containsKey(host)) {
+                    deadHosts.add(host);
+                }
+            }
         }
-        if (hosts.isEmpty()) {
+        if (hosts.isEmpty() && deadHosts.isEmpty()) {
             LOGGER.error("LabelProxy detected container change, however, NginxService does not think any configs need to be changed...");
             return;
         }
@@ -129,6 +136,22 @@ public class NginxService {
                 pendingHosts.put(host.host, host.future);
             }
         }
+        if (!deadHosts.isEmpty()) {
+            LOGGER.info("Removing hosts: {}", deadHosts);
+            backupConfigs();
+            for (String deadHost : deadHosts) {
+                try {
+                    Files.deleteIfExists(hostConfig(deadHost));
+                } catch (IOException ex) {
+                    LOGGER.error("Failed to delete host config.", ex);
+                }
+            }
+            try {
+                nginxProcess.hotReload();
+            } catch (Throwable ex) {
+                LOGGER.error("Nginx Hot reload failed!", ex);
+            }
+        }
     }
 
     public void activateConfig(NginxHost host) {
@@ -144,7 +167,7 @@ public class NginxService {
         Path backup = backupConfigs();
         boolean testSuccess = false;
         try {
-            Files.writeString(IOUtils.makeParents(hostConfigDir.resolve(host.host + ".conf")), host.config, Charsets.UTF_8);
+            Files.writeString(hostConfig(host.host), host.config, Charsets.UTF_8);
             testSuccess = nginxProcess.testConfig();
         } catch (IOException ex) {
             LOGGER.error("Failed to run config test for {}", host.host, ex);
@@ -280,6 +303,10 @@ public class NginxService {
             LOGGER.error("Failed to restore configs.", ex);
             throw new RuntimeException("Failed to restore configs.", ex);
         }
+    }
+
+    private Path hostConfig(String host) {
+        return hostConfigDir.resolve(host + ".conf");
     }
 
     private static void deleteDirectory(Path file) {
