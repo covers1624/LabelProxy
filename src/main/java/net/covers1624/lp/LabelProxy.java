@@ -32,12 +32,13 @@ public class LabelProxy {
         Security.addProvider(new BouncyCastleProvider());
     }
 
-    private final Config config = Config.load(Path.of("./config.json"));
+    public final Config config = Config.load(Path.of("./config.json"));
     private final Curl4jHttpEngine httpEngine = new Curl4jHttpEngine();
     private final DockerService docker = new DockerService(config, httpEngine);
     private final CloudflareService cloudflare = new CloudflareService(config, httpEngine);
     private final LetsEncryptService letsEncrypt = new LetsEncryptService(config, cloudflare);
-    private final NginxService nginx = new NginxService(config, letsEncrypt);
+
+    private final NginxService nginx = new NginxService(this, letsEncrypt);
 
     private final Map<String, List<ContainerConfiguration>> containerConfigs = new HashMap<>();
     private final Set<String> broken = new HashSet<>();
@@ -84,6 +85,14 @@ public class LabelProxy {
         }
 
         return 0;
+    }
+
+    public void quit() {
+        running = false;
+    }
+
+    public boolean isRunning() {
+        return running;
     }
 
     private boolean prepareNetwork() {

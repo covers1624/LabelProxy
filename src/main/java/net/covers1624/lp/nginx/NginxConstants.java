@@ -1,6 +1,14 @@
 package net.covers1624.lp.nginx;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Created by covers1624 on 4/11/23.
@@ -42,4 +50,25 @@ public class NginxConstants {
             "ECDHE-RSA-AES256-SHA384",
             "AES256-SHA256"
     );
+
+    // Probably wayy more many mime types than is required. These were yoinked from the Arch package.
+    // The nginx alpine container has only the common ones.
+    public static final Map<String, String[]> MIME_TYPES = loadMimeTypes();
+
+    private static Map<String, String[]> loadMimeTypes() {
+        Map<String, String[]> types = new LinkedHashMap<>();
+        try (InputStream is = NginxConstants.class.getResourceAsStream("/mime.types")) {
+            if (is == null) throw new RuntimeException("mime.types resource is missing.");
+            BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8));
+            String line;
+            while ((line = reader.readLine()) != null) {
+                if (line.isEmpty()) continue;
+                String[] splits = line.split("\t");
+                types.put(splits[0], Arrays.copyOfRange(splits, 1, splits.length));
+            }
+        } catch (IOException ex) {
+            throw new RuntimeException("Unable to parse mime types.");
+        }
+        return types;
+    }
 }

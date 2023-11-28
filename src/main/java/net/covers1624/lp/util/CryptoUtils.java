@@ -9,11 +9,11 @@ import java.util.Base64;
 public class CryptoUtils {
 
     public static void writePem(PrintWriter writer, byte[] pemData, String type) {
-        writer.println("-----BEGIN " + type + " KEY-----");
+        writer.println("-----BEGIN " + type + "-----");
         String str = Base64.getEncoder().encodeToString(pemData);
         for (int i = 0; i < str.length(); i += 64) {
             writer.println(str.substring(i, Math.min(i + 64, str.length())));
         }
-        writer.println("-----END " + type + " KEY-----");
+        writer.println("-----END " + type + "-----");
     }
 }

@@ -54,7 +54,7 @@ public class ConfigParser {
                     Integer.parseInt(props.getOrDefault("port", "80")),
                     Boolean.parseBoolean(props.getOrDefault("https_redir", "true")),
                     props.getOrDefault("location", "/"),
-                    props.get("proxy_pass")
+                    props.getOrDefault("proxy_pass", "")
             ));
         }
 

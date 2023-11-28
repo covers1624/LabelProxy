@@ -21,8 +21,6 @@ public abstract class NginxConfigGenerator {
     protected final StringWriter sw = new StringWriter();
     protected final IndentPrintWriter pw = new IndentPrintWriter(new PrintWriter(sw, true));
 
-    public abstract CompletableFuture<String> generate();
-
     protected void emitBlank() {
         pw.println();
     }
@@ -44,6 +42,11 @@ public abstract class NginxConfigGenerator {
         return add + str;
     }
 
+    public static abstract class Simple extends NginxConfigGenerator {
+
+        public abstract String generate();
+    }
+
     public static class NginxHttpConfigGenerator extends NginxConfigGenerator {
 
         private final LetsEncryptService letsEncrypt;
@@ -54,7 +57,6 @@ public abstract class NginxConfigGenerator {
             this.host = host;
         }
 
-        @Override
         public CompletableFuture<String> generate() {
             return letsEncrypt.getCertificates(host.host)
                     .thenApply(certInfo -> {
@@ -68,7 +70,7 @@ public abstract class NginxConfigGenerator {
             emitBraced("server", () -> {
                 emit("listen 80");
                 emit("listen [::]:80"); // One day we will have functioning ipv6
-                emit("server " + host.host);
+                emit("server_name " + host.host);
                 emitBlank();
                 emit("client_max_body_size 0M"); // I really could not care less, all endpoints get infinite upload.
 
@@ -89,7 +91,7 @@ public abstract class NginxConfigGenerator {
             emitBraced("server", () -> {
                 emit("listen 443 ssl http2");
                 emit("listen [::]:443 ssl http2"); // One day we will have functioning ipv6
-                emit("server " + host.host);
+                emit("server_name " + host.host);
                 emitBlank();
                 emit("client_max_body_size 0M"); // I really could not care less, all endpoints get infinite upload.
                 emitBlank();
@@ -127,7 +129,7 @@ public abstract class NginxConfigGenerator {
 
         private void emitProxy(boolean https, ContainerConfiguration c) {
             String from = "http://" + c.ip() + ":" + c.port() + addStart("/", c.proxyPass());
-            String to = (https ? "https://" : "http://") + host + c.location();
+            String to = (https ? "https://" : "http://") + host.host + c.location();
             emit("proxy_pass " + from);
             emit("proxy_read_timeout 90");
             emit("proxy_max_temp_file_size 0");

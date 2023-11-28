@@ -22,7 +22,13 @@ public class Config {
 
     private transient @Nullable Path path;
 
+    @JsonAdapter (PathTypeAdapter.class)
+    public Path logsDir = Path.of("./logs").toAbsolutePath().normalize();
+    @JsonAdapter (PathTypeAdapter.class)
+    public Path tempDir = Path.of("./tmp/").toAbsolutePath().normalize();
+
     public Docker docker = new Docker();
+    public Nginx nginx = new Nginx();
     public LetsEncrypt letsEncrypt = new LetsEncrypt();
     public List<CloudflareAuth> cloudflareAuths = new ArrayList<>();
 
@@ -33,10 +39,20 @@ public class Config {
         public boolean createMissing = true;
     }
 
+    public static class Nginx {
+        public String executable = "/usr/bin/nginx";
+        @JsonAdapter (PathTypeAdapter.class)
+        public Path dir = Path.of("./nginx").toAbsolutePath().normalize();
+        public String user = "$whoami";
+        public String workers = "auto";
+        public String workerConnections = "1024";
+        public String logFormat = "$host $remote_addr - $remote_user [$time_local] \"$request\" $status $body_bytes_sent \"$http_referer\" \"$http_user_agent\" \"$http_x_forwarded_for\"";
+    }
+
     public static class LetsEncrypt {
 
         @JsonAdapter (PathTypeAdapter.class)
-        public Path dir = Path.of("./letsencrypt");
+        public Path dir = Path.of("./letsencrypt").toAbsolutePath().normalize();
         public int dhParamBits = 4096;
         public @Nullable String email;
     }
@@ -54,6 +70,7 @@ public class Config {
             try {
                 Config config = JsonUtils.parse(GSON, path, Config.class);
                 config.path = path;
+                config.save();
                 return config;
             } catch (IOException ex) {
                 throw new RuntimeException("Failed to load config", ex);
