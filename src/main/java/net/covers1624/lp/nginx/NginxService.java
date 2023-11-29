@@ -81,6 +81,17 @@ public class NginxService {
             return false;
         }
 
+        Path nginxExecutable = Path.of(config.nginx.executable);
+        if (Files.notExists(nginxExecutable)) {
+            LOGGER.error("Nginx executable '{}' does not exist.", nginxExecutable);
+            return false;
+        }
+
+        if (!Files.isExecutable(nginxExecutable)) {
+            LOGGER.error("Nginx executable '{}' is not executable.", nginxExecutable);
+            return false;
+        }
+
         return true;
     }
 
