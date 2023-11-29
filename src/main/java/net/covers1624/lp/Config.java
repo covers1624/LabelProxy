@@ -41,7 +41,7 @@ public class Config {
 
     public static class Nginx {
 
-        public String executable = "/usr/bin/nginx";
+        public String executable = "/usr/sbin/nginx";
         @JsonAdapter (PathTypeAdapter.class)
         public Path dir = Path.of("./nginx").toAbsolutePath().normalize();
         public String user = "nginx";
