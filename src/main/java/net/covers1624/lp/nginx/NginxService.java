@@ -36,9 +36,12 @@ public class NginxService {
     private final LabelProxy proxy;
     private final LetsEncryptService letsEncrypt;
     private final NginxProcess nginxProcess;
+
     private final Path configDir;
-    private final Path tempDir;
+    private final Path rootConfig;
     private final Path hostConfigDir;
+
+    private final Path tempDir;
     private final Path nginxPidFile;
     private final Path nginxAccessLog;
     private final Path nginxErrorLog;
@@ -52,22 +55,16 @@ public class NginxService {
         this.proxy = proxy;
         this.letsEncrypt = letsEncrypt;
 
+        configDir = config.nginx.dir.resolve("conf");
+        rootConfig = configDir.resolve("nginx.conf");
+        hostConfigDir = rootConfig.resolveSibling(rootConfig.getFileName() + ".d");
+
         tempDir = config.tempDir.resolve("nginx");
         Path logsDir = config.logsDir.resolve("nginx");
-        configDir = config.nginx.dir.resolve("conf");
         nginxPidFile = config.nginx.dir.resolve("nginx.pid");
         nginxAccessLog = logsDir.resolve("access.log");
         nginxErrorLog = logsDir.resolve("error.log");
 
-        // Archive and delete configs.
-        LOGGER.info("Startup. Archiving configs..");
-        if (Files.exists(configDir)) {
-            backupConfigs();
-            deleteDirectory(configDir);
-        }
-        // Generate a new root config file.
-        Path rootConfig = generateRootConfig(configDir);
-        hostConfigDir = rootConfig.resolveSibling(rootConfig.getFileName() + ".d");
         try {
             Files.createDirectories(tempDir);
             Files.createDirectories(logsDir);
@@ -76,8 +73,18 @@ public class NginxService {
             throw new RuntimeException("Failed to make directories.", ex);
         }
 
-        // Start up Nginx.
         nginxProcess = new NginxProcess(proxy, configDir, rootConfig, nginxPidFile);
+    }
+
+    public void startNginx() {
+        if (nginxProcess.getState() != Thread.State.NEW) throw new IllegalStateException("Nginx already started.");
+
+        LOGGER.info("Startup. Archiving configs..");
+        if (Files.exists(configDir)) {
+            backupConfigs();
+            deleteDirectory(configDir);
+        }
+        generateRootConfig();
         nginxProcess.start();
     }
 
@@ -213,7 +220,7 @@ public class NginxService {
         LOGGER.info("Nginx updated!");
     }
 
-    private Path generateRootConfig(Path configDir) {
+    private void generateRootConfig() {
         try {
             Path mimeConfigFile = IOUtils.makeParents(configDir.resolve("mime.conf"));
             Files.writeString(mimeConfigFile, new NginxConfigGenerator.Simple() {
@@ -230,7 +237,7 @@ public class NginxService {
 
             }.generate());
 
-            Path nginxRootConfig = IOUtils.makeParents(configDir.resolve("nginx.conf"));
+            Path nginxRootConfig = IOUtils.makeParents(rootConfig);
             Files.writeString(nginxRootConfig, new NginxConfigGenerator.Simple() {
 
                 @Override
@@ -271,7 +278,6 @@ public class NginxService {
                     return sw.toString();
                 }
             }.generate());
-            return nginxRootConfig;
         } catch (IOException ex) {
             throw new RuntimeException("Failed to generate root config.", ex);
         }

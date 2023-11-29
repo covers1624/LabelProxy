@@ -54,12 +54,14 @@ public class LabelProxy {
             return 1;
         }
 
+        nginx.startNginx();
+
         int counter = 0;
         while (running) {
             boolean oneHourTrigger = counter % TimeUnit.HOURS.toSeconds(1) == 0;
             scanContainers();
             if (oneHourTrigger) {
-                 letsEncrypt.expiryScan();
+                letsEncrypt.expiryScan();
             }
             try {
                 Thread.sleep(TimeUnit.SECONDS.toMillis(1));
