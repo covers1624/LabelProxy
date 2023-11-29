@@ -16,6 +16,8 @@ import net.covers1624.quack.net.httpapi.EngineRequest;
 import net.covers1624.quack.net.httpapi.EngineResponse;
 import net.covers1624.quack.net.httpapi.WebBody;
 import net.covers1624.quack.net.httpapi.curl4j.Curl4jHttpEngine;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -29,6 +31,8 @@ import static java.util.Objects.requireNonNull;
  */
 public class CloudflareService {
 
+    private static final Logger LOGGER = LogManager.getLogger();
+
     private static final Gson GSON = new Gson();
 
     private final Config config;
@@ -39,10 +43,15 @@ public class CloudflareService {
     public CloudflareService(LabelProxy proxy, Curl4jHttpEngine httpEngine) {
         this.config = proxy.config;
         this.httpEngine = httpEngine;
+    }
 
+    public boolean validate() {
         if (config.cloudflareAuths.isEmpty()) {
-            throw new RuntimeException("No cloudflare auths are configured!");
+            LOGGER.error("No CloudFlare auths are configured.");
+            return false;
         }
+
+        return true;
     }
 
     public ListZonesResponse listZones(CloudflareAuth auth) throws IOException {

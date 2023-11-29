@@ -63,6 +63,7 @@ public class LabelProxy {
     private int mainI(String[] args) {
         if (!ensureDockerAccessible()) return 1;
         if (!nginx.validate()) return 1;
+        if (!cloudflare.validate()) return 1;
         if (!prepareNetwork()) return 1;
 
         attachToNetwork();
