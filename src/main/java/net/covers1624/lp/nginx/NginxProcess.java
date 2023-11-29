@@ -127,6 +127,7 @@ public class NginxProcess extends Thread {
 
         ProcessHandle proc = ProcessHandle.of(pid).orElse(null);
         if (proc == null || !proc.isAlive()) return;
+        if (proc.info().command().filter(e -> e.contains("nginx")).isEmpty()) return;
 
         LOGGER.warn("Nginx is still running! Killing..");
         if (!proc.destroy()) {
