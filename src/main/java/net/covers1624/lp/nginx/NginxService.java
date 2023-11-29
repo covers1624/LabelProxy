@@ -206,16 +206,16 @@ public class NginxService {
     }
 
     private void buildConfig(NginxHost host) {
-        host.future = new NginxHttpConfigGenerator(letsEncrypt, host).generate()
-                .thenAcceptAsync(config -> {
-                    host.config = config;
-                    activateConfig(host);
-                }, NGINX_APPLY_EXECUTOR);
-        host.future.exceptionally(ex -> {
-            LOGGER.error("Fatal error generating nginx config for {}", host.host, ex);
-            return null;
-        });
         synchronized (pendingHosts) {
+            host.future = new NginxHttpConfigGenerator(letsEncrypt, host).generate()
+                    .thenAcceptAsync(config -> {
+                        host.config = config;
+                        activateConfig(host);
+                    }, NGINX_APPLY_EXECUTOR);
+            host.future.exceptionally(ex -> {
+                LOGGER.error("Fatal error generating nginx config for {}", host.host, ex);
+                return null;
+            });
             pendingHosts.put(host.host, host.future);
         }
     }
@@ -223,10 +223,12 @@ public class NginxService {
     public void activateConfig(NginxHost host) {
         if (host.config == null) throw new IllegalArgumentException("Unable to active host without a config.");
 
-        if (pendingHosts.get(host.host) != host.future) {
-            // TODO this could potentially happen in valid states.
-            LOGGER.error("Invalid state. Applying nginx config when not pending?");
-            return;
+        synchronized (pendingHosts) {
+            if (pendingHosts.get(host.host) != host.future) {
+                // TODO this could potentially happen in valid states.
+                LOGGER.error("Invalid state. Applying nginx config when not pending?");
+                return;
+            }
         }
 
         LOGGER.info("Activating nginx config for {}.", host.host);
