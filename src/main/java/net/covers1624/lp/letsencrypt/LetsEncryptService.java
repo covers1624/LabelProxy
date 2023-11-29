@@ -1,5 +1,6 @@
 package net.covers1624.lp.letsencrypt;
 
+import com.google.common.base.Suppliers;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.annotations.JsonAdapter;
@@ -40,6 +41,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 import static net.covers1624.lp.cloudflare.data.dns.RecordType.TXT;
@@ -64,7 +66,7 @@ public class LetsEncryptService {
     private final Path cacheDir;
     private final Path certsDir;
     private final Session session;
-    private final Account account;
+    private final Supplier<Account> account;
 
     public LetsEncryptService(LabelProxy proxy, CloudflareService cloudflare) {
         this.proxy = proxy;
@@ -76,45 +78,48 @@ public class LetsEncryptService {
         cacheDir = config.letsEncrypt.dir;
         certsDir = cacheDir.resolve("certs");
         session = new Session("acme://letsencrypt.org/staging");
-        Path accountJson = cacheDir.resolve("account.json");
-        if (Files.exists(accountJson)) {
-            LOGGER.info("Loading LetsEncrypt account.");
-            try {
-                AccountJson json = JsonUtils.parse(GSON, accountJson, AccountJson.class);
-                Login login = session.login(
-                        json.accountUrl,
-                        KeyPairUtils.readKeyPair(new StringReader(String.join("\n", json.keystore)))
-                );
-                account = login.getAccount();
-            } catch (IOException ex) {
-                throw new RuntimeException("Failed to load account.", ex);
-            }
-        } else {
-            LOGGER.info("Requesting new LetsEncrypt account.");
-            try {
-                KeyPair keyPair = KeyPairUtils.createECKeyPair("secp256r1");
-                AccountBuilder builder = new AccountBuilder()
-                        .agreeToTermsOfService()
-                        .useKeyPair(keyPair);
-                if (config.letsEncrypt.email != null) {
-                    builder.addEmail(config.letsEncrypt.email);
+
+        account = Suppliers.memoize(() -> {
+            Account account;
+            Path accountJson = cacheDir.resolve("account.json");
+            if (Files.exists(accountJson)) {
+                LOGGER.info("Loading LetsEncrypt account.");
+                try {
+                    AccountJson json = JsonUtils.parse(GSON, accountJson, AccountJson.class);
+                    Login login = session.login(
+                            json.accountUrl,
+                            KeyPairUtils.readKeyPair(new StringReader(String.join("\n", json.keystore)))
+                    );
+                    account = login.getAccount();
+                } catch (IOException ex) {
+                    throw new RuntimeException("Failed to load account.", ex);
                 }
-                account = builder.create(session);
+            } else {
+                LOGGER.info("Requesting new LetsEncrypt account.");
+                try {
+                    KeyPair keyPair = KeyPairUtils.createECKeyPair("secp256r1");
+                    AccountBuilder builder = new AccountBuilder()
+                            .agreeToTermsOfService()
+                            .useKeyPair(keyPair);
+                    if (!"no".equals(config.letsEncrypt.email)) {
+                        builder.addEmail(config.letsEncrypt.email);
+                    }
+                    account = builder.create(session);
 
-                StringWriter sw = new StringWriter();
-                KeyPairUtils.writeKeyPair(keyPair, sw);
-                JsonUtils.write(GSON, IOUtils.makeParents(accountJson), new AccountJson(
-                        account.getLocation(),
-                        FastStream.of(sw.toString().split("\n"))
-                                .map(String::trim)
-                                .toList()
-                ));
-            } catch (IOException | AcmeException ex) {
-                throw new RuntimeException("Failed to create account and save to disk.", ex);
+                    StringWriter sw = new StringWriter();
+                    KeyPairUtils.writeKeyPair(keyPair, sw);
+                    JsonUtils.write(GSON, IOUtils.makeParents(accountJson), new AccountJson(
+                            account.getLocation(),
+                            FastStream.of(sw.toString().split("\n"))
+                                    .map(String::trim)
+                                    .toList()
+                    ));
+                } catch (IOException | AcmeException ex) {
+                    throw new RuntimeException("Failed to create account and save to disk.", ex);
+                }
             }
-        }
-
-        setupDHParam();
+            return account;
+        });
 
         try (Stream<Path> files = Files.list(certsDir)) {
             for (Path path : files.toList()) {
@@ -125,6 +130,19 @@ public class LetsEncryptService {
         } catch (IOException ex) {
             throw new RuntimeException("Failed to parse certs.", ex);
         }
+    }
+
+    public boolean validate() {
+        if (config.letsEncrypt.email == null) {
+            LOGGER.error("LetsEncrypt email is not configured. Set to 'no' to disable.");
+            return false;
+        }
+        return true;
+    }
+
+    public void setup() {
+        account.get();
+        setupDHParam();
     }
 
     public void expiryScan() {
@@ -196,7 +214,7 @@ public class LetsEncryptService {
 
     private CertInfo requestCertificate(String host) throws AcmeException, IOException {
         LOGGER.info("Ordering new certificate for {}", host);
-        Order order = account.newOrder()
+        Order order = account.get().newOrder()
                 .domain(host)
                 .create();
         for (Authorization auth : order.getAuthorizations()) {

@@ -64,10 +64,12 @@ public class LabelProxy {
         if (!ensureDockerAccessible()) return 1;
         if (!nginx.validate()) return 1;
         if (!cloudflare.validate()) return 1;
+        if (!letsEncrypt.validate()) return 1;
         if (!prepareNetwork()) return 1;
 
         attachToNetwork();
 
+        letsEncrypt.setup();
         nginx.startNginx();
 
         int counter = 0;
