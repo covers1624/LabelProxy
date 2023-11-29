@@ -57,7 +57,7 @@ public class NginxService {
 
         configDir = config.nginx.dir.resolve("conf");
         rootConfig = configDir.resolve("nginx.conf");
-        hostConfigDir = rootConfig.resolveSibling(rootConfig.getFileName() + ".d");
+        hostConfigDir = configDir.resolve("nginx.conf.d");
 
         tempDir = !LabelProxy.RUNNING_AS_ROOT ? config.tempDir.resolve("nginx") : null;
         Path logsDir = config.logsDir.resolve("nginx");
@@ -218,7 +218,7 @@ public class NginxService {
         Path backup = backupConfigs();
         boolean testSuccess = false;
         try {
-            Files.writeString(hostConfig(host.host), host.config, Charsets.UTF_8);
+            Files.writeString(IOUtils.makeParents(hostConfig(host.host)), host.config, Charsets.UTF_8);
             testSuccess = nginxProcess.testConfig();
         } catch (IOException ex) {
             LOGGER.error("Failed to run config test for {}", host.host, ex);
