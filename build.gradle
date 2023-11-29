@@ -1,5 +1,6 @@
 plugins {
     id 'java'
+    id 'com.github.johnrengelman.shadow' version '8.1.1'
     id 'org.jetbrains.gradle.plugin.idea-ext' version '1.1.7'
 }
 
@@ -11,7 +12,6 @@ java {
 }
 
 group = 'net.covers1624'
-version = '1.0-SNAPSHOT'
 
 repositories {
     mavenLocal()
@@ -41,6 +41,17 @@ dependencies {
 test {
     useJUnitPlatform()
 }
+
+jar.enabled = false
+shadowJar {
+    configurations = [project.configurations.runtimeClasspath]
+    manifest {
+        attributes 'Main-Class': 'net.covers1624.lp.LabelProxy'
+        attributes 'Multi-Release': 'true'
+    }
+    archiveClassifier = null
+}
+assemble.dependsOn(shadowJar)
 
 idea.project.settings {
     delegateActions {
