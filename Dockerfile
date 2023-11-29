@@ -6,7 +6,7 @@ RUN \
 	&& apt update \
     && apt install -y temurin-21-jre
 
-COPY build/libs/LabelProxy.jar /opt/LabelProxy/LabelProxy.jar
+COPY build/libs/LabelProxy.jar /app/LabelProxy.jar
 
-WORKDIR /opt/LabelProxy
-CMD java -Xms128M -Xmx256M -XX:+UseZGC -jar /opt/LabelProxy/LabelProxy.jar
+WORKDIR /app
+CMD java -Xms128M -Xmx256M -XX:+UseZGC -jar /app/LabelProxy.jar
