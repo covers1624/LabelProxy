@@ -152,6 +152,7 @@ public class NginxProcess extends Thread {
                     LOGGER.info(line);
                 });
             }
+            proc.onExit().join();
             if (proc.exitValue() != 0) {
                 throw new RuntimeException("Nginx exited with error.");
             }
