@@ -36,7 +36,7 @@ public class ConfigParserTests {
                                 "LabelProxy.location", "/abcd",
                                 "LabelProxy.proxy_pass", "1234"
                         )),
-                        "0.0.0.0"
+                        null
                 )
         );
     }
@@ -77,7 +77,7 @@ public class ConfigParserTests {
                                 "LabelProxy.g1.location", "/1234",
                                 "LabelProxy.g1.proxy_pass", "abcd"
                         )),
-                        "0.0.0.0"
+                        null
                 )
         );
     }
