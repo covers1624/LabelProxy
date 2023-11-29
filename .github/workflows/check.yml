@@ -1,0 +1,29 @@
+name: Check
+
+on:
+  push:
+    branches:
+      - '*'
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v3
+      - name: Gradle Cache
+        uses: actions/cache@v3
+        with:
+          path: ~/.gradle
+          key: gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: gradle-
+      - name: Check
+        run: |
+          ./gradlew build check -si
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: jars
+          path: |
+            build/**/*.jar
+
