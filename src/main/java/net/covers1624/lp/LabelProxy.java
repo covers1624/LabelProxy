@@ -235,6 +235,7 @@ public class LabelProxy {
                     .redirectErrorStream(true)
                     .start();
             String ret = new String(proc.getInputStream().readAllBytes(), StandardCharsets.UTF_8).trim();
+            proc.onExit().join();
             if (proc.exitValue() != 0) {
                 LOGGER.debug("'id -u {}' returned non zero. {} {}", uName, proc.exitValue(), ret);
                 return false;
