@@ -1,4 +1,4 @@
-name: Check
+name: Release
 
 on:
   push:
@@ -31,15 +31,9 @@ jobs:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Check
+      - name: Build Java
         run: |
           ./gradlew build check -si
-      - name: Upload Artifacts
-        uses: actions/upload-artifact@v3
-        with:
-          name: jars
-          path: |
-            build/**/*.jar
       - name: Extract metadata (tags, labels) for Docker
         id: meta
         uses: docker/metadata-action@v5
@@ -52,4 +46,10 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+      - name: Upload Java Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: jars
+          path: |
+            build/**/*.jar
 
