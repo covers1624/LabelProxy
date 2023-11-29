@@ -14,6 +14,8 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.Security;
@@ -29,8 +31,16 @@ public class LabelProxy {
 
     public static final String PREFIX = "LabelProxy";
 
+    /**
+     * If the current java process is running as root.
+     */
+    public static final boolean RUNNING_AS_ROOT = areRunningAsRoot();
+
     static {
         Security.addProvider(new BouncyCastleProvider());
+        if (RUNNING_AS_ROOT) {
+            LOGGER.info("Detected running as root.");
+        }
     }
 
     public final Config config = Config.load(Path.of("./config.json"));
@@ -51,12 +61,9 @@ public class LabelProxy {
     }
 
     private int mainI(String[] args) {
-        if (!ensureDockerAccessible()) {
-            return 1;
-        }
-        if (!prepareNetwork()) {
-            return 1;
-        }
+        if (!ensureDockerAccessible()) return 1;
+        if (!nginx.validate()) return 1;
+        if (!prepareNetwork()) return 1;
 
         attachToNetwork();
 
@@ -215,6 +222,24 @@ public class LabelProxy {
                             .flatMap(e -> e)
                             .toList()
             );
+        }
+    }
+
+    private static boolean areRunningAsRoot() {
+        String uName = System.getProperty("user.name");
+        try {
+            Process proc = new ProcessBuilder("id", "-u", uName)
+                    .redirectErrorStream(true)
+                    .start();
+            String ret = new String(proc.getInputStream().readAllBytes(), StandardCharsets.UTF_8).trim();
+            if (proc.exitValue() != 0) {
+                LOGGER.debug("'id -u {}' returned non zero. {} {}", uName, proc.exitValue(), ret);
+                return false;
+            }
+            return ret.equals("0");
+        } catch (IOException ex) {
+            LOGGER.debug("Failed to run 'id -u {}'", uName, ex);
+            return false;
         }
     }
 }

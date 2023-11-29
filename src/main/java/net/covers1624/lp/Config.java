@@ -25,7 +25,7 @@ public class Config {
     @JsonAdapter (PathTypeAdapter.class)
     public Path logsDir = Path.of("./logs").toAbsolutePath().normalize();
     @JsonAdapter (PathTypeAdapter.class)
-    public Path tempDir = Path.of("./tmp/").toAbsolutePath().normalize();
+    public @Nullable Path tempDir = LabelProxy.RUNNING_AS_ROOT ? null : Path.of("./tmp/").toAbsolutePath().normalize();
 
     public Docker docker = new Docker();
     public Nginx nginx = new Nginx();
@@ -40,10 +40,11 @@ public class Config {
     }
 
     public static class Nginx {
+
         public String executable = "/usr/bin/nginx";
         @JsonAdapter (PathTypeAdapter.class)
         public Path dir = Path.of("./nginx").toAbsolutePath().normalize();
-        public String user = "$whoami";
+        public String user = "nginx";
         public String workers = "auto";
         public String workerConnections = "1024";
         public String logFormat = "$host $remote_addr - $remote_user [$time_local] \"$request\" $status $body_bytes_sent \"$http_referer\" \"$http_user_agent\" \"$http_x_forwarded_for\"";

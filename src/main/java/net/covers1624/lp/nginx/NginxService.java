@@ -41,7 +41,7 @@ public class NginxService {
     private final Path rootConfig;
     private final Path hostConfigDir;
 
-    private final Path tempDir;
+    private final @Nullable Path tempDir;
     private final Path nginxPidFile;
     private final Path nginxAccessLog;
     private final Path nginxErrorLog;
@@ -59,14 +59,14 @@ public class NginxService {
         rootConfig = configDir.resolve("nginx.conf");
         hostConfigDir = rootConfig.resolveSibling(rootConfig.getFileName() + ".d");
 
-        tempDir = config.tempDir.resolve("nginx");
+        tempDir = !LabelProxy.RUNNING_AS_ROOT ? config.tempDir.resolve("nginx") : null;
         Path logsDir = config.logsDir.resolve("nginx");
         nginxPidFile = config.nginx.dir.resolve("nginx.pid");
         nginxAccessLog = logsDir.resolve("access.log");
         nginxErrorLog = logsDir.resolve("error.log");
 
         try {
-            Files.createDirectories(tempDir);
+            if (tempDir != null) Files.createDirectories(tempDir);
             Files.createDirectories(logsDir);
             Files.createDirectories(hostConfigDir);
         } catch (IOException ex) {
@@ -74,6 +74,30 @@ public class NginxService {
         }
 
         nginxProcess = new NginxProcess(proxy, configDir, rootConfig, nginxPidFile);
+    }
+
+    public boolean validate() {
+        if (LabelProxy.RUNNING_AS_ROOT && !ensureNginxWorkerUserExists()) {
+            return false;
+        }
+
+        return true;
+    }
+
+    private boolean ensureNginxWorkerUserExists() {
+        LOGGER.info("Checking if nginx worker user '{}' exists.", config.nginx.user);
+        try {
+            Process proc = new ProcessBuilder("id", "-u", config.nginx.user)
+                    .redirectErrorStream(true)
+                    .start();
+            proc.getInputStream().readAllBytes(); // We do nothing with this, but incase it blocks as no input has been read.
+            proc.onExit().join();
+
+            return proc.exitValue() == 0;
+        } catch (IOException ex) {
+            LOGGER.error("Failed to query if nginx worker user exists.", ex);
+        }
+        return false;
     }
 
     public void startNginx() {
@@ -242,10 +266,8 @@ public class NginxService {
 
                 @Override
                 public String generate() {
-                    String currUser = System.getProperty("user.name");
-                    boolean useCurrUser = config.nginx.user.equals("$whoami");
-                    if (!useCurrUser || !currUser.equals("root")) {
-                        emit("user " + (useCurrUser ? currUser : config.nginx.user));
+                    if (LabelProxy.RUNNING_AS_ROOT) {
+                        emit("user " + config.nginx.user);
                     }
                     emit("worker_processes " + config.nginx.workers);
                     emitBlank();
@@ -259,11 +281,14 @@ public class NginxService {
                     emitBraced("http", () -> {
                         emit("include " + mimeConfigFile.toAbsolutePath().normalize());
                         emit("default_type application/octet-stream");
-                        emitBlank();
-                        emit("client_body_temp_path " + tempDir.resolve("client-body").toAbsolutePath().normalize() + " 1 2");
-                        emit("fastcgi_temp_path " + tempDir.resolve("fastcgi").toAbsolutePath().normalize() + " 1 2");
-                        emit("uwsgi_temp_path " + tempDir.resolve("uwsgi").toAbsolutePath().normalize() + " 1 2");
-                        emit("scgi_temp_path " + tempDir.resolve("scgi").toAbsolutePath().normalize() + " 1 2");
+                        // This exists mainly for dev-time. When we don't run LabelProxy and the root nginx server as root.
+                        if (tempDir != null) {
+                            emitBlank();
+                            emit("client_body_temp_path " + tempDir.resolve("client-body").toAbsolutePath().normalize() + " 1 2");
+                            emit("fastcgi_temp_path " + tempDir.resolve("fastcgi").toAbsolutePath().normalize() + " 1 2");
+                            emit("uwsgi_temp_path " + tempDir.resolve("uwsgi").toAbsolutePath().normalize() + " 1 2");
+                            emit("scgi_temp_path " + tempDir.resolve("scgi").toAbsolutePath().normalize() + " 1 2");
+                        }
                         emitBlank();
                         emit("log_format main '" + config.nginx.logFormat + "'");
                         emit("access_log " + nginxAccessLog.toAbsolutePath().normalize() + " main");
