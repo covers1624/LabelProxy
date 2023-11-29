@@ -14,6 +14,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.Security;
 import java.util.*;
@@ -50,6 +51,9 @@ public class LabelProxy {
     }
 
     private int mainI(String[] args) {
+        if (!ensureDockerAccessible()) {
+            return 1;
+        }
         if (!prepareNetwork()) {
             return 1;
         }
@@ -79,6 +83,33 @@ public class LabelProxy {
 
     public boolean isRunning() {
         return running;
+    }
+
+    private boolean ensureDockerAccessible() {
+        Path path = Path.of(config.docker.socket);
+        if (!Files.exists(path)) {
+            LOGGER.error("Docker socket file does not exist.");
+            return false;
+        }
+
+        if (!Files.isReadable(path)) {
+            LOGGER.error("No permissions to read docker socket.");
+            return false;
+        }
+
+        if (!Files.isWritable(path)) {
+            LOGGER.error("No permissions to write docker socket.");
+            return false;
+        }
+
+        try {
+            docker.listContainers();
+        } catch (Throwable ex) {
+            LOGGER.error("Failed to query container list.", ex);
+            return false;
+        }
+
+        return true;
     }
 
     private boolean prepareNetwork() {
