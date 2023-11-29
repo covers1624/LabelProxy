@@ -82,8 +82,7 @@ public class DockerService {
                 .unixSocket(config.docker.socket)
                 .url("http://v1.25/containers/json");
         try (Curl4jEngineResponse resp = request.execute()) {
-            if (resp.statusCode() != 200)
-                throw new IllegalStateException("Expected 200 response. Got: " + resp.statusCode());
+            if (resp.statusCode() != 200) throw new IllegalStateException("Expected 200 response. Got: " + resp.statusCode());
 
             WebBody body = resp.body();
             assert body != null;
@@ -94,12 +93,13 @@ public class DockerService {
         }
     }
 
-    public DockerContainer inspectContainer(String id) {
+    public @Nullable DockerContainer inspectContainer(String id) {
         Curl4jEngineRequest request = httpEngine.newRequest()
                 .method("GET", null)
                 .unixSocket(config.docker.socket)
                 .url("http://v1.25/containers/" + id + "/json");
         try (Curl4jEngineResponse resp = request.execute()) {
+            if (resp.statusCode() == 404) return null;
             if (resp.statusCode() != 200) throw new IllegalStateException("Expected 200 response. Got: " + resp.statusCode());
 
             WebBody body = resp.body();

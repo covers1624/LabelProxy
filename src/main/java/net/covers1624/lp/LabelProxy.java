@@ -58,6 +58,8 @@ public class LabelProxy {
             return 1;
         }
 
+        attachToNetwork();
+
         nginx.startNginx();
 
         int counter = 0;
@@ -139,6 +141,29 @@ public class LabelProxy {
         }
         LOGGER.info("Network validated!");
         return true;
+    }
+
+    private void attachToNetwork() {
+        String hostname = System.getenv("HOSTNAME");
+        if (hostname == null || hostname.isEmpty()) {
+            LOGGER.info("HOSTNAME env var not detected. Assuming we aren't in docker.");
+            return;
+        }
+        LOGGER.info("Detected hostname of '{}' attempting to attach ourselves to the http network.", hostname);
+
+        DockerContainer container = docker.inspectContainer(hostname);
+        if (container == null) {
+            LOGGER.warn("Unable to lookup container from hostname. Assuming we aren't in docker.");
+            return;
+        }
+
+        if (container.networkSettings().networks().containsKey(config.docker.network)) {
+            LOGGER.info("Already attached to network!");
+            return;
+        }
+
+        LOGGER.info("Attaching ourselves to the http network.");
+        docker.connectNetwork(config.docker.network, container.id());
     }
 
     private void scanContainers() {
