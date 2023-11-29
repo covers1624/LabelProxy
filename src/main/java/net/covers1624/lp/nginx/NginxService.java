@@ -123,6 +123,10 @@ public class NginxService {
         nginxProcess.start();
     }
 
+    public void stopNginx() {
+        nginxProcess.quit();
+    }
+
     public void onRenewCertificates(LetsEncryptService.CertInfo newInfo) {
         NginxHost host = hosts.get(newInfo.host());
         buildConfig(host);

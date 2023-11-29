@@ -72,6 +72,13 @@ public class LabelProxy {
         letsEncrypt.setup();
         nginx.startNginx();
 
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            LOGGER.info("Stopping gracefully..");
+            nginx.stopNginx();
+            quit();
+        }));
+
+        LOGGER.info("Monitoring for container changes..");
         int counter = 0;
         while (running) {
             boolean oneHourTrigger = counter % TimeUnit.HOURS.toSeconds(1) == 0;
