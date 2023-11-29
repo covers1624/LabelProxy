@@ -121,14 +121,16 @@ public class LetsEncryptService {
             return account;
         });
 
-        try (Stream<Path> files = Files.list(certsDir)) {
-            for (Path path : files.toList()) {
-                if (!path.toString().endsWith(".json")) continue;
-                CertInfo info = JsonUtils.parse(GSON, path, CertInfo.class);
-                certs.put(info.host, info);
+        if (Files.exists(certsDir)) {
+            try (Stream<Path> files = Files.list(certsDir)) {
+                for (Path path : files.toList()) {
+                    if (!path.toString().endsWith(".json")) continue;
+                    CertInfo info = JsonUtils.parse(GSON, path, CertInfo.class);
+                    certs.put(info.host, info);
+                }
+            } catch (IOException ex) {
+                throw new RuntimeException("Failed to parse certs.", ex);
             }
-        } catch (IOException ex) {
-            throw new RuntimeException("Failed to parse certs.", ex);
         }
     }
 
