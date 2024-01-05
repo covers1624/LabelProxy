@@ -81,8 +81,12 @@ public class LabelProxy {
         LOGGER.info("Monitoring for container changes..");
         int counter = 0;
         while (running) {
+            try {
+                scanContainers();
+            } catch (Throwable ex) {
+                LOGGER.error("Failed to scan containers.", ex);
+            }
             boolean oneHourTrigger = counter % TimeUnit.HOURS.toSeconds(1) == 0;
-            scanContainers();
             if (oneHourTrigger) {
                 letsEncrypt.expiryScan();
             }
@@ -193,6 +197,7 @@ public class LabelProxy {
             seen.add(id);
 
             DockerContainer container = docker.inspectContainer(id);
+            if (container == null) continue;
             if (containerConfigs.containsKey(id) || broken.contains(id)) continue;
             if (!container.config().hasLabelWithPrefix(PREFIX)) continue;
             LOGGER.info("New container found: {}", id);
