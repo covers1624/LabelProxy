@@ -57,6 +57,8 @@ public class ConfigParser {
                     props.getOrDefault("proxy_pass", "")
             ));
         }
+        LOGGER.info("Parsed {} configs from {}", configs.size(), container.id());
+        configs.forEach(LOGGER::info);
 
         return configs;
     }
