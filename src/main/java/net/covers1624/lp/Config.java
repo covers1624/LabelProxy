@@ -18,7 +18,10 @@ import java.util.List;
  */
 public class Config {
 
-    private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
+    private static final Gson GSON = new GsonBuilder()
+            .setPrettyPrinting()
+            .serializeNulls()
+            .create();
 
     private transient @Nullable Path path;
 
