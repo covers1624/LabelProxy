@@ -89,8 +89,9 @@ public abstract class NginxConfigGenerator {
 
         private void emitHttps(CertInfo certInfo) {
             emitBraced("server", () -> {
-                emit("listen 443 ssl http2");
-                emit("listen [::]:443 ssl http2"); // One day we will have functioning ipv6
+                emit("listen 443 ssl");
+                emit("listen [::]:443 ssl"); // One day we will have functioning ipv6
+                emit("http2 on");
                 emit("server_name " + host.host);
                 emitBlank();
                 emit("client_max_body_size 0M"); // I really could not care less, all endpoints get infinite upload.
