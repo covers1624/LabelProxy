@@ -59,6 +59,7 @@ public class Config {
         public Path dir = Path.of("./letsencrypt").toAbsolutePath().normalize();
         public int dhParamBits = 4096;
         public @Nullable String email;
+        public boolean staging = false;
     }
 
     public static class CloudflareAuth {

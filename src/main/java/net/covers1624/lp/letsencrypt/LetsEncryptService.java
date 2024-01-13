@@ -77,7 +77,8 @@ public class LetsEncryptService {
 
         cacheDir = config.letsEncrypt.dir;
         certsDir = cacheDir.resolve("certs");
-        session = new Session("acme://letsencrypt.org/");
+        String staging = config.letsEncrypt.staging ? "staging" : "";
+        session = new Session("acme://letsencrypt.org/" + staging);
 
         account = Suppliers.memoize(() -> {
             Account account;
