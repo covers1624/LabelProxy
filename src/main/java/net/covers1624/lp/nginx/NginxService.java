@@ -268,6 +268,7 @@ public class NginxService {
 
                 @Override
                 public String generate() {
+                    emit("types_hash_max_size 4096");
                     emitBraced("types", () -> {
                         for (Map.Entry<String, String[]> entry : NginxConstants.MIME_TYPES.entrySet()) {
                             emit(entry.getKey() + " " + String.join(" ", entry.getValue()));
