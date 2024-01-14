@@ -264,6 +264,9 @@ public class NginxService {
         synchronized (hosts) {
             hosts.put(host.host, host);
         }
+        synchronized (pendingHosts) {
+            pendingHosts.remove(host.host);
+        }
         LOGGER.info("Nginx updated!");
     }
 
