@@ -6,7 +6,7 @@ import net.covers1624.lp.Config;
 import net.covers1624.lp.ContainerConfiguration;
 import net.covers1624.lp.LabelProxy;
 import net.covers1624.lp.letsencrypt.LetsEncryptService;
-import net.covers1624.lp.nginx.NginxConfigGenerator.NginxHttpConfigGenerator;
+import net.covers1624.quack.collection.FastStream;
 import net.covers1624.quack.io.IOUtils;
 import net.covers1624.quack.util.SneakyUtils;
 import org.apache.logging.log4j.LogManager;
@@ -24,6 +24,9 @@ import java.util.stream.Stream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
+
+import static net.covers1624.lp.nginx.NginxConstants.SSL_CIPHERS;
+import static net.covers1624.lp.nginx.NginxConstants.SSL_PROTOCOLS;
 
 /**
  * Created by covers1624 on 3/11/23.
@@ -48,6 +51,7 @@ public class NginxService {
 
     private final Map<String, NginxHost> hosts = new HashMap<>();
     private final Map<String, CompletableFuture<Void>> pendingHosts = new HashMap<>();
+    private static final ExecutorService EXECUTOR = Executors.newCachedThreadPool(new ThreadFactoryBuilder().setDaemon(true).setNameFormat("Nginx Config Builder %d").build());
     private final ExecutorService NGINX_APPLY_EXECUTOR = Executors.newSingleThreadExecutor(new ThreadFactoryBuilder().setDaemon(true).setNameFormat("Nginx Config Applicator").build());
 
     public NginxService(LabelProxy proxy, LetsEncryptService letsEncrypt) {
@@ -406,6 +410,110 @@ public class NginxService {
 
         public boolean hasChanged(NginxHost newHost) {
             return !containers.equals(newHost.containers);
+        }
+    }
+
+    public static class NginxHttpConfigGenerator extends NginxConfigGenerator {
+
+        private final LetsEncryptService letsEncrypt;
+        private final NginxHost host;
+
+        public NginxHttpConfigGenerator(LetsEncryptService letsEncrypt, NginxHost host) {
+            this.letsEncrypt = letsEncrypt;
+            this.host = host;
+        }
+
+        public CompletableFuture<String> generate() {
+            return letsEncrypt.getCertificates(host.host)
+                    .thenApplyAsync(certInfo -> {
+                        emitHttp();
+                        emitHttps(certInfo);
+                        return sw.toString();
+                    }, EXECUTOR);
+        }
+
+        private void emitHttp() {
+            emitBraced("server", () -> {
+                emit("listen 80");
+                emit("listen [::]:80"); // One day we will have functioning ipv6
+                emit("server_name " + host.host);
+                emitBlank();
+                emit("client_max_body_size 0M"); // I really could not care less, all endpoints get infinite upload.
+
+                for (ContainerConfiguration container : host.containers) {
+                    emitBlank();
+                    emitBraced("location " + container.location(), () -> {
+                        if (container.redirectToHttps()) {
+                            emit("return 301 https://" + host.host + "$request_uri");
+                        } else {
+                            emitProxy(false, container);
+                        }
+                    });
+                }
+            });
+        }
+
+        private void emitHttps(LetsEncryptService.CertInfo certInfo) {
+            emitBraced("server", () -> {
+                emit("listen 443 ssl");
+                emit("listen [::]:443 ssl"); // One day we will have functioning ipv6
+                emit("http2 on");
+                emit("server_name " + host.host);
+                emitBlank();
+                emit("client_max_body_size 0M"); // I really could not care less, all endpoints get infinite upload.
+                emitBlank();
+                emit("ssl_dhparam " + letsEncrypt.dhParam);
+                emit("ssl_certificate " + certInfo.fullChain());
+                emit("ssl_certificate_key " + certInfo.privKey());
+                emit("ssl_trusted_certificate " + certInfo.chain());
+                emitBlank();
+                emit("ssl_protocols " + FastStream.of(SSL_PROTOCOLS).join(" "));
+                emit("ssl_prefer_server_ciphers on");
+                emit("ssl_ciphers " + FastStream.of(SSL_CIPHERS).join(":"));
+                emit("ssl_ecdh_curve auto");
+                emitBlank();
+                emit("ssl_session_cache shared:SSL:1m");
+                emit("ssl_session_tickets off");
+                emitBlank();
+                emit("ssl_stapling on");
+                emit("ssl_stapling_verify on");
+                emitBlank();
+                emit("resolver 1.1.1.1 8.8.8.8 valid=300s");
+                emit("resolver_timeout 5s");
+                emitBlank();
+                emit("add_header Strict-Transport-Security \"max-age=63072000; includeSubdomains\"");
+                emit("add_header X-Frame-Options SAMEORIGIN");
+                emit("add_header X-Content-Type-Options nosniff");
+
+                for (ContainerConfiguration container : host.containers) {
+                    emitBlank();
+                    emitBraced("location " + container.location(), () -> {
+                        emitProxy(true, container);
+                    });
+                }
+            });
+        }
+
+        private void emitProxy(boolean https, ContainerConfiguration c) {
+            String from = "http://" + c.ip() + ":" + c.port() + addStart("/", c.proxyPass());
+            String to = (https ? "https://" : "http://") + host.host + c.location();
+            emit("proxy_pass " + from);
+            emit("proxy_read_timeout 90");
+            emit("proxy_max_temp_file_size 0");
+
+            emit("proxy_set_header Host " + host.host + ":$server_port");
+            emit("proxy_set_header X-Real-IP $remote_addr");
+            emit("proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for");
+            emit("proxy_set_header X-Forwarded-Proto $scheme");
+            emit("proxy_set_header X-Scheme $scheme");
+            emit("proxy_set_header Referer $http_referer");
+            emit("proxy_set_header Upgrade $http_upgrade");
+            emit("proxy_set_header Connection \"upgrade\"");
+
+            emit("proxy_set_header X-Forwarded-Server $host");
+            emit("proxy_set_header X-Forwarded-Host $host");
+
+            emit("proxy_redirect " + from + " " + to);
         }
     }
 }

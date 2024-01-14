@@ -1,6 +1,7 @@
 package net.covers1624.lp.letsencrypt;
 
 import com.google.common.base.Suppliers;
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.annotations.JsonAdapter;
@@ -40,6 +41,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
@@ -53,6 +56,7 @@ public class LetsEncryptService {
 
     private static final Logger LOGGER = LogManager.getLogger();
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
+    private static final ExecutorService EXECUTOR = Executors.newSingleThreadExecutor(new ThreadFactoryBuilder().setDaemon(true).setNameFormat("LetsEncrypt Executor").build());
 
     private final Map<String, CertInfo> certs = new HashMap<>();
     private final Map<String, CompletableFuture<CertInfo>> pending = new HashMap<>();
@@ -199,7 +203,7 @@ public class LetsEncryptService {
                     pending.remove(host);
                 }
                 return info;
-            });
+            }, EXECUTOR);
             pending.put(host, future);
             return future;
         }
