@@ -141,6 +141,7 @@ public class NginxService {
 
         Map<String, NginxHost> hosts = new LinkedHashMap<>();
         Set<String> deadHosts = new HashSet<>();
+        Set<String> unmodified = new HashSet<>();
         for (ContainerConfiguration configuration : configurations) {
             NginxHost host = hosts.computeIfAbsent(configuration.host(), NginxHost::new);
             host.containers.add(configuration);
@@ -158,10 +159,11 @@ public class NginxService {
                 } else {
                     LOGGER.info("Unmodified nginx config for {}", host);
                     iterator.remove();
+                    unmodified.add(host);
                 }
             }
             for (String host : this.hosts.keySet()) {
-                if (!hosts.containsKey(host)) {
+                if (!hosts.containsKey(host) && !unmodified.contains(host)) {
                     deadHosts.add(host);
                 }
             }
