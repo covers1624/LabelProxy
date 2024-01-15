@@ -96,7 +96,7 @@ public class LabelProxy {
             try {
                 scanContainers();
             } catch (Throwable ex) {
-                LOGGER.error("Failed to scan containers.", ex);
+                LOGGER.error(DISCORD, "Failed to scan containers.", ex);
             }
             boolean oneHourTrigger = counter % TimeUnit.HOURS.toSeconds(1) == 0;
             if (oneHourTrigger) {
