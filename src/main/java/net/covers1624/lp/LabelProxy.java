@@ -226,7 +226,7 @@ public class LabelProxy {
                 containerConfigs.put(id, containerConfiguration);
                 containersModified = true;
             } catch (Throwable ex) {
-                LOGGER.error(DISCORD, "Failed to build configuration for {}", id);
+                LOGGER.error(DISCORD, "Failed to build configuration for {}", id, ex);
                 broken.add(id);
             }
         }
