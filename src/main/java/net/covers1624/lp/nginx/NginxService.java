@@ -25,6 +25,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
 
+import static net.covers1624.lp.logging.Markers.DISCORD;
 import static net.covers1624.lp.nginx.NginxConstants.SSL_CIPHERS;
 import static net.covers1624.lp.nginx.NginxConstants.SSL_PROTOCOLS;
 
@@ -137,7 +138,7 @@ public class NginxService {
     }
 
     public void rebuild(Collection<ContainerConfiguration> configurations) {
-        LOGGER.info("Rebuilding Nginx configs..");
+        LOGGER.info(DISCORD, "Rebuilding Nginx configs..");
 
         Map<String, NginxHost> hosts = new LinkedHashMap<>();
         Set<String> deadHosts = new HashSet<>();
@@ -153,11 +154,11 @@ public class NginxService {
                 String host = entry.getKey();
                 NginxHost oldHost = this.hosts.get(host);
                 if (oldHost == null) {
-                    LOGGER.info("New nginx config for {}", host);
+                    LOGGER.info(DISCORD, " New nginx config for {}", host);
                 } else if (oldHost.hasChanged(entry.getValue())) {
-                    LOGGER.info("Changed nginx config for {}", host);
+                    LOGGER.info(DISCORD, " Changed nginx config for {}", host);
                 } else {
-                    LOGGER.info("Unmodified nginx config for {}", host);
+                    LOGGER.info(" Unmodified nginx config for {}", host);
                     iterator.remove();
                     unmodified.add(host);
                 }
@@ -169,7 +170,7 @@ public class NginxService {
             }
         }
         if (hosts.isEmpty() && deadHosts.isEmpty()) {
-            LOGGER.error("LabelProxy detected container change, however, NginxService does not think any configs need to be changed...");
+            LOGGER.error(DISCORD, "LabelProxy detected container change, however, NginxService does not think any configs need to be changed...");
             return;
         }
 
@@ -189,23 +190,23 @@ public class NginxService {
 
         if (!deadHosts.isEmpty()) {
             CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
-                LOGGER.info("Removing hosts: {}", deadHosts);
+                LOGGER.info(DISCORD, "Removing hosts: {}", deadHosts);
                 backupConfigs();
                 for (String deadHost : deadHosts) {
                     try {
                         Files.deleteIfExists(hostConfig(deadHost));
                     } catch (IOException ex) {
-                        LOGGER.error("Failed to delete host config.", ex);
+                        LOGGER.error(DISCORD, "Failed to delete host config.", ex);
                     }
                 }
                 try {
                     nginxProcess.hotReload();
                 } catch (Throwable ex) {
-                    LOGGER.error("Nginx Hot reload failed!", ex);
+                    LOGGER.error(DISCORD, "Nginx Hot reload failed!", ex);
                 }
             }, NGINX_APPLY_EXECUTOR);
             future.exceptionally(ex -> {
-                LOGGER.error("Failed to remove dead nginx hosts and reload.", ex);
+                LOGGER.error("DISCORD, Failed to remove dead nginx hosts and reload.", ex);
                 return null;
             });
         }
@@ -219,7 +220,7 @@ public class NginxService {
                         activateConfig(host);
                     }, NGINX_APPLY_EXECUTOR);
             host.future.exceptionally(ex -> {
-                LOGGER.error("Fatal error generating nginx config for {}", host.host, ex);
+                LOGGER.error(DISCORD, "Fatal error generating nginx config for {}", host.host, ex);
                 return null;
             });
             pendingHosts.put(host.host, host.future);
@@ -232,23 +233,23 @@ public class NginxService {
         synchronized (pendingHosts) {
             if (pendingHosts.get(host.host) != host.future) {
                 // TODO this could potentially happen in valid states.
-                LOGGER.error("Invalid state. Applying nginx config when not pending?");
+                LOGGER.error(DISCORD, "Invalid state. Applying nginx config when not pending?");
                 return;
             }
         }
 
-        LOGGER.info("Activating nginx config for {}.", host.host);
+        LOGGER.info(DISCORD, "Activating nginx config for {}.", host.host);
         Path backup = backupConfigs();
         boolean testSuccess = false;
         try {
             Files.writeString(IOUtils.makeParents(hostConfig(host.host)), host.config, Charsets.UTF_8);
             testSuccess = nginxProcess.testConfig();
         } catch (IOException ex) {
-            LOGGER.error("Failed to run config test for {}", host.host, ex);
+            LOGGER.error(DISCORD, "Failed to run config test for {}", host.host, ex);
         }
         if (!testSuccess) {
             backupConfigs("failed");
-            LOGGER.error("Generated invalid Nginx config.");
+            LOGGER.error(DISCORD, "Generated invalid Nginx config.");
             restoreConfigs(backup);
             return;
         }
@@ -256,7 +257,7 @@ public class NginxService {
         try {
             nginxProcess.hotReload();
         } catch (Throwable ex) {
-            LOGGER.error("Failed to hot reload nginx.");
+            LOGGER.error(DISCORD, "Failed to hot reload nginx.");
             restoreConfigs(backup);
             return;
         }
@@ -267,7 +268,7 @@ public class NginxService {
         synchronized (pendingHosts) {
             pendingHosts.remove(host.host);
         }
-        LOGGER.info("Nginx updated!");
+        LOGGER.info(DISCORD, "Nginx updated!");
     }
 
     private void generateRootConfig() {

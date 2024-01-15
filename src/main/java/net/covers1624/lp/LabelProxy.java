@@ -6,12 +6,19 @@ import net.covers1624.lp.docker.data.ContainerSummary;
 import net.covers1624.lp.docker.data.DockerContainer;
 import net.covers1624.lp.docker.data.DockerNetwork;
 import net.covers1624.lp.letsencrypt.LetsEncryptService;
+import net.covers1624.lp.logging.DiscordWebhookAppender;
 import net.covers1624.lp.nginx.NginxService;
 import net.covers1624.lp.util.ConfigParser;
 import net.covers1624.quack.collection.FastStream;
 import net.covers1624.quack.net.httpapi.curl4j.Curl4jHttpEngine;
+import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.core.Filter;
+import org.apache.logging.log4j.core.LoggerContext;
+import org.apache.logging.log4j.core.config.Configuration;
+import org.apache.logging.log4j.core.filter.MarkerFilter;
+import org.apache.logging.log4j.core.layout.PatternLayout;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 
 import java.io.IOException;
@@ -21,6 +28,9 @@ import java.nio.file.Path;
 import java.security.Security;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+
+import static net.covers1624.lp.logging.Markers.DISCORD;
+import static net.covers1624.lp.logging.Markers.DISCORD_ONLY;
 
 /**
  * Created by covers1624 on 1/11/23.
@@ -61,6 +71,8 @@ public class LabelProxy {
     }
 
     private int mainI(String[] args) {
+        if (!configureDiscordLogging()) return 1;
+        LOGGER.info(DISCORD_ONLY, "Starting Label Proxy..");
         if (!ensureDockerAccessible()) return 1;
         if (!nginx.validate()) return 1;
         if (!cloudflare.validate()) return 1;
@@ -111,24 +123,24 @@ public class LabelProxy {
     private boolean ensureDockerAccessible() {
         Path path = Path.of(config.docker.socket);
         if (!Files.exists(path)) {
-            LOGGER.error("Docker socket file does not exist.");
+            LOGGER.error(DISCORD, "Docker socket file does not exist.");
             return false;
         }
 
         if (!Files.isReadable(path)) {
-            LOGGER.error("No permissions to read docker socket.");
+            LOGGER.error(DISCORD, "No permissions to read docker socket.");
             return false;
         }
 
         if (!Files.isWritable(path)) {
-            LOGGER.error("No permissions to write docker socket.");
+            LOGGER.error(DISCORD, "No permissions to write docker socket.");
             return false;
         }
 
         try {
             docker.listContainers();
         } catch (Throwable ex) {
-            LOGGER.error("Failed to query container list.", ex);
+            LOGGER.error(DISCORD, "Failed to query container list.", ex);
             return false;
         }
 
@@ -141,7 +153,7 @@ public class LabelProxy {
         if (network == null) {
             LOGGER.info(" Network does not exist.");
             if (!config.docker.createMissing) {
-                LOGGER.error("Automatic network creation disabled. Either enable it or manually create the network.");
+                LOGGER.error(DISCORD, "Automatic network creation disabled. Either enable it or manually create the network.");
                 return false;
             }
             LOGGER.info(" Creating network..");
@@ -152,12 +164,12 @@ public class LabelProxy {
         LOGGER.info(" Network Exists, validating..");
 
         if (!network.driver().equals("bridge")) {
-            LOGGER.error("Network must have 'bridge' Driver. Currently is: {}", network.driver());
+            LOGGER.error(DISCORD, "Network must have 'bridge' Driver. Currently is: {}", network.driver());
             return false;
         }
 
         if (!network.scope().equals("local")) {
-            LOGGER.error("Network must have 'local' Scope. Currently is: {}", network.scope());
+            LOGGER.error(DISCORD, "Network must have 'local' Scope. Currently is: {}", network.scope());
             return false;
         }
         LOGGER.info("Network validated!");
@@ -200,7 +212,7 @@ public class LabelProxy {
             if (container == null) continue;
             if (containerConfigs.containsKey(id) || broken.contains(id)) continue;
             if (!container.config().hasLabelWithPrefix(PREFIX)) continue;
-            LOGGER.info("New container found: {}", id);
+            LOGGER.info(DISCORD, "New container found: {}", id);
 
             try {
                 DockerContainer.Network network = container.networkSettings().networks().get(config.docker.network);
@@ -214,7 +226,7 @@ public class LabelProxy {
                 containerConfigs.put(id, containerConfiguration);
                 containersModified = true;
             } catch (Throwable ex) {
-                LOGGER.error("Failed to build configuration for {}", id);
+                LOGGER.error(DISCORD, "Failed to build configuration for {}", id);
                 broken.add(id);
             }
         }
@@ -226,7 +238,7 @@ public class LabelProxy {
             String id = entry.getKey();
             if (seen.contains(id)) continue;
 
-            LOGGER.info("Container removed: {}", id);
+            LOGGER.info(DISCORD, "Container removed: {}", id);
             iterator.remove();
             containersModified = true;
         }
@@ -257,5 +269,30 @@ public class LabelProxy {
             LOGGER.debug("Failed to run 'id -u {}'", uName, ex);
             return false;
         }
+    }
+
+    private boolean configureDiscordLogging() {
+        if (config.discord.webhookUrl == null) return true;
+        if (config.discord.name == null) {
+            LOGGER.info("Missing name `discord.name`.");
+            return false;
+        }
+
+        LOGGER.info("Configuring discord logging..");
+        LoggerContext ctx = LoggerContext.getContext(false);
+        Configuration cfg = ctx.getConfiguration();
+
+        DiscordWebhookAppender appender = new DiscordWebhookAppender(
+                PatternLayout.newBuilder()
+                        .withPattern("[%d{HH:mm:ss}] [%t/%level] [%logger]: %msg")
+                        .build(),
+                httpEngine,
+                config
+        );
+        appender.start();
+        cfg.addAppender(appender);
+        cfg.getRootLogger().addAppender(appender, Level.ALL, MarkerFilter.createFilter("DISCORD", Filter.Result.ACCEPT, Filter.Result.DENY));
+        ctx.updateLoggers();
+        return true;
     }
 }

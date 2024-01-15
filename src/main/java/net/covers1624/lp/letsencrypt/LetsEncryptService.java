@@ -47,6 +47,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 
+import static net.covers1624.lp.logging.Markers.DISCORD;
 import static net.covers1624.lp.cloudflare.data.dns.RecordType.TXT;
 
 /**
@@ -210,7 +211,7 @@ public class LetsEncryptService {
     }
 
     private void renewCertificate(CertInfo info) {
-        LOGGER.info("Certificate for {} is about to expire. Renewing..", info.host);
+        LOGGER.info(DISCORD, "Certificate for {} is about to expire. Renewing..", info.host);
         getCertificates(info.host, true)
                 .thenAcceptAsync(proxy.nginx::onRenewCertificates)
                 .exceptionally(ex -> {
@@ -220,7 +221,7 @@ public class LetsEncryptService {
     }
 
     private CertInfo requestCertificate(String host) throws AcmeException, IOException {
-        LOGGER.info("Ordering new certificate for {}", host);
+        LOGGER.info(DISCORD, "Ordering new certificate for {}", host);
         Order order = account.get().newOrder()
                 .domain(host)
                 .create();

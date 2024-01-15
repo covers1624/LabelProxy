@@ -34,6 +34,7 @@ public class Config {
     public Nginx nginx = new Nginx();
     public LetsEncrypt letsEncrypt = new LetsEncrypt();
     public List<CloudflareAuth> cloudflareAuths = new ArrayList<>();
+    public Discord discord = new Discord();
 
     public static class Docker {
 
@@ -68,6 +69,13 @@ public class Config {
 
         public @Nullable String email;
         public @Nullable String key;
+    }
+
+    public static class Discord {
+
+        public @Nullable String webhookUrl;
+        public @Nullable String name;
+        public long[] alert = new long[0];
     }
 
     public static Config load(Path path) {

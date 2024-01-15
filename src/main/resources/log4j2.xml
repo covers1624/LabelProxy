@@ -22,9 +22,15 @@
     </Appenders>
     <Loggers>
         <Root level="all">
-            <AppenderRef ref="SysOut" level="${sys:console.level:-info}"/>
-            <AppenderRef ref="File" level="info"/>
-            <AppenderRef ref="DebugFile" level="${sys:debug.level:-trace}"/>
+            <AppenderRef ref="SysOut" level="${sys:console.level:-info}">
+                <MarkerFilter marker="DISCORD_ONLY" onMatch="${sys:LabelProxy.discord:-DENY}" onMismatch="NEUTRAL"/>
+            </AppenderRef>
+            <AppenderRef ref="File" level="info">
+                <MarkerFilter marker="DISCORD_ONLY" onMatch="${sys:LabelProxy.discord:-DENY}" onMismatch="NEUTRAL"/>
+            </AppenderRef>
+            <AppenderRef ref="DebugFile" level="${sys:debug.level:-trace}">
+                <MarkerFilter marker="DISCORD_ONLY" onMatch="${sys:LabelProxy.discord:-DENY}" onMismatch="NEUTRAL"/>
+            </AppenderRef>
         </Root>
     </Loggers>
 </Configuration>
