@@ -192,11 +192,14 @@ public class NginxService {
             CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
                 LOGGER.info(DISCORD, "Removing hosts: {}", deadHosts);
                 backupConfigs();
-                for (String deadHost : deadHosts) {
-                    try {
-                        Files.deleteIfExists(hostConfig(deadHost));
-                    } catch (IOException ex) {
-                        LOGGER.error(DISCORD, "Failed to delete host config.", ex);
+                synchronized (this.hosts) {
+                    for (String deadHost : deadHosts) {
+                        this.hosts.remove(deadHost);
+                        try {
+                            Files.deleteIfExists(hostConfig(deadHost));
+                        } catch (IOException ex) {
+                            LOGGER.error(DISCORD, "Failed to delete host config.", ex);
+                        }
                     }
                 }
                 try {
