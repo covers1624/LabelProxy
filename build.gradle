@@ -24,8 +24,8 @@ dependencies {
     implementation 'org.apache.logging.log4j:log4j-core:2.21.1'
     implementation 'org.apache.logging.log4j:log4j-slf4j2-impl:2.21.1'
 
-    implementation 'net.covers1624:Quack:0.4.10.88'
-    implementation 'net.covers1624:curl4j:3.0.4:libcurl'
+    implementation 'net.covers1624:Quack:0.4.10.89'
+    implementation 'net.covers1624:curl4j:3.0.5:libcurl'
 
     implementation 'com.google.guava:guava:32.1.3-jre'
     implementation 'com.google.code.gson:gson:2.10.1'
