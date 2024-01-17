@@ -30,6 +30,8 @@ public class Config {
     @JsonAdapter (PathTypeAdapter.class)
     public @Nullable Path tempDir = LabelProxy.RUNNING_AS_ROOT ? null : Path.of("./tmp/").toAbsolutePath().normalize();
 
+    public String timezone = "Australia/Adelaide";
+
     public Docker docker = new Docker();
     public Nginx nginx = new Nginx();
     public LetsEncrypt letsEncrypt = new LetsEncrypt();

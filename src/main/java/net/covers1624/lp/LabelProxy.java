@@ -1,5 +1,6 @@
 package net.covers1624.lp;
 
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import net.covers1624.lp.cloudflare.CloudflareService;
 import net.covers1624.lp.docker.DockerService;
 import net.covers1624.lp.docker.data.ContainerSummary;
@@ -26,7 +27,12 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.Security;
+import java.time.Duration;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.*;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 import static net.covers1624.lp.logging.Markers.DISCORD;
@@ -64,6 +70,8 @@ public class LabelProxy {
     private final Map<String, List<ContainerConfiguration>> containerConfigs = new HashMap<>();
     private final Set<String> broken = new HashSet<>();
 
+    private final ScheduledExecutorService SCHEDULER = Executors.newSingleThreadScheduledExecutor(new ThreadFactoryBuilder().setDaemon(true).setNameFormat("Schedule Executor").build());
+
     private boolean running = true;
 
     public static void main(String[] args) {
@@ -83,9 +91,11 @@ public class LabelProxy {
 
         letsEncrypt.setup();
         nginx.startNginx();
+        scheduleLogRotation();
 
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             LOGGER.info("Stopping gracefully..");
+            SCHEDULER.shutdown();
             nginx.stopNginx();
             quit();
         }));
@@ -294,5 +304,20 @@ public class LabelProxy {
         cfg.getRootLogger().addAppender(appender, Level.ALL, MarkerFilter.createFilter("DISCORD", Filter.Result.ACCEPT, Filter.Result.DENY));
         ctx.updateLoggers();
         return true;
+    }
+
+    private void scheduleLogRotation() {
+        ZonedDateTime now = ZonedDateTime.now(ZoneId.of(config.timezone));
+        ZonedDateTime nextRun = now.withHour(0).withMinute(0).withSecond(0);
+        if (now.compareTo(nextRun) > 0) {
+            nextRun = nextRun.plusDays(1);
+        }
+
+        SCHEDULER.scheduleAtFixedRate(
+                nginx::rotateLogs,
+                Duration.between(now, nextRun).getSeconds(),
+                TimeUnit.DAYS.toSeconds(1),
+                TimeUnit.SECONDS
+        );
     }
 }

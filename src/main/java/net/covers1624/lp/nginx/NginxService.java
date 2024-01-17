@@ -78,7 +78,7 @@ public class NginxService {
             throw new RuntimeException("Failed to make directories.", ex);
         }
 
-        nginxProcess = new NginxProcess(proxy, configDir, rootConfig, nginxPidFile);
+        nginxProcess = new NginxProcess(proxy, configDir, rootConfig, nginxPidFile, nginxAccessLog, nginxErrorLog);
     }
 
     public boolean validate() {
@@ -130,6 +130,10 @@ public class NginxService {
 
     public void stopNginx() {
         nginxProcess.quit();
+    }
+
+    public void rotateLogs() {
+        nginxProcess.rotateLogs();
     }
 
     public void onRenewCertificates(LetsEncryptService.CertInfo newInfo) {

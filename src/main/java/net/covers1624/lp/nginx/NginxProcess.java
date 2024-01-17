@@ -2,19 +2,23 @@ package net.covers1624.lp.nginx;
 
 import net.covers1624.lp.Config;
 import net.covers1624.lp.LabelProxy;
+import net.covers1624.quack.io.IOUtils;
+import org.apache.commons.compress.compressors.bzip2.BZip2CompressorOutputStream;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Collections;
 import java.util.function.Consumer;
 import java.util.function.Function;
+
+import static net.covers1624.lp.logging.Markers.DISCORD;
 
 /**
  * Created by covers1624 on 27/11/23.
@@ -23,19 +27,25 @@ public class NginxProcess extends Thread {
 
     private static final Logger LOGGER = LogManager.getLogger();
 
+    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+
     private final LabelProxy proxy;
     private final Config config;
     private final Path configDir;
     private final Path rootConfig;
     private final Path pidFile;
+    private final Path accessLog;
+    private final Path errorLog;
     private Process process;
 
-    public NginxProcess(LabelProxy proxy, Path configDir, Path rootConfig, Path pidFile) {
+    public NginxProcess(LabelProxy proxy, Path configDir, Path rootConfig, Path pidFile, Path accessLog, Path errorLog) {
         this.proxy = proxy;
         this.config = proxy.config;
         this.configDir = configDir;
         this.rootConfig = rootConfig;
         this.pidFile = pidFile;
+        this.accessLog = accessLog;
+        this.errorLog = errorLog;
         setName("Nginx Monitor");
         setDaemon(false);
     }
@@ -53,6 +63,21 @@ public class NginxProcess extends Thread {
         int ret = signalNginx("-s", "reload");
         if (ret != 0) {
             throw new IllegalStateException("Nginx returned: " + ret);
+        }
+    }
+
+    public void rotateLogs() {
+        LOGGER.info("Rotating nginx logs..");
+        String date = DATE_FORMATTER.format(LocalDateTime.now().minusHours(2));
+        try {
+            Path accessRotated = Files.move(accessLog, accessLog.resolveSibling(accessLog.getFileName() + ".rotated"));
+            Path errorRotated = Files.move(errorLog, errorLog.resolveSibling(errorLog.getFileName() + ".rotated"));
+            signalNginx("-s", "reopen");
+            compressLog(accessRotated, accessLog.resolveSibling(accessLog.getFileName() + "-" + date + ".bz2"));
+            compressLog(errorRotated, errorLog.resolveSibling(errorLog.getFileName() + "-" + date + ".bz2"));
+            LOGGER.info("Logs rotated!");
+        } catch (IOException ex) {
+            LOGGER.error(DISCORD, "Failed to rotate nginx logs.");
         }
     }
 
@@ -175,6 +200,14 @@ public class NginxProcess extends Thread {
         thread.setName("Process Stream Gobbler");
         thread.setDaemon(true);
         thread.start();
+    }
+
+    private static void compressLog(Path input, Path output) throws IOException {
+        try (InputStream is = Files.newInputStream(input);
+             OutputStream os = new BZip2CompressorOutputStream(Files.newOutputStream(output))) {
+            IOUtils.copy(is, os);
+        }
+        Files.delete(input);
     }
 
     private static class AbortNginx extends Exception {
