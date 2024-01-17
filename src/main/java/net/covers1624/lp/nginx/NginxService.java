@@ -466,7 +466,7 @@ public class NginxService {
                     emitBlank();
                     emitBraced("location " + container.location(), () -> {
                         if (container.redirectToHttps()) {
-                            emit("add_header Alt-Svc 'h3=\":433\"; ma=86400'");
+                            emit("add_header Alt-Svc 'h3=\":443\"; ma=86400'");
                             emit("return 301 https://" + host.host + "$request_uri");
                         } else {
                             emitProxy(false, container);
@@ -541,7 +541,7 @@ public class NginxService {
             emitBlank();
             emit("proxy_redirect " + from + " " + to);
             emitBlank();
-            emit("add_header Alt-Svc 'h3=\":433\"; ma=86400'");
+            emit("add_header Alt-Svc 'h3=\":443\"; ma=86400'");
         }
     }
 }
