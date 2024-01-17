@@ -466,6 +466,7 @@ public class NginxService {
                     emitBlank();
                     emitBraced("location " + container.location(), () -> {
                         if (container.redirectToHttps()) {
+                            emit("add_header Alt-Svc 'h3=\":433\"; ma=86400'");
                             emit("return 301 https://" + host.host + "$request_uri");
                         } else {
                             emitProxy(false, container);
@@ -478,8 +479,11 @@ public class NginxService {
         private void emitHttps(LetsEncryptService.CertInfo certInfo) {
             emitBraced("server", () -> {
                 emit("listen 443 ssl");
+                emit("listen 443 quic reuseport");
                 emit("listen [::]:443 ssl"); // One day we will have functioning ipv6
+                emit("listen [::]:443 quic reuseport");
                 emit("http2 on");
+                emit("http3 on");
                 emit("server_name " + host.host);
                 emitBlank();
                 emit("client_max_body_size 0M"); // I really could not care less, all endpoints get infinite upload.
@@ -522,7 +526,7 @@ public class NginxService {
             emit("proxy_pass " + from);
             emit("proxy_read_timeout 90");
             emit("proxy_max_temp_file_size 0");
-
+            emitBlank();
             emit("proxy_set_header Host " + host.host + ":$server_port");
             emit("proxy_set_header X-Real-IP $remote_addr");
             emit("proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for");
@@ -531,11 +535,13 @@ public class NginxService {
             emit("proxy_set_header Referer $http_referer");
             emit("proxy_set_header Upgrade $http_upgrade");
             emit("proxy_set_header Connection \"upgrade\"");
-
+            emitBlank();
             emit("proxy_set_header X-Forwarded-Server $host");
             emit("proxy_set_header X-Forwarded-Host $host");
-
+            emitBlank();
             emit("proxy_redirect " + from + " " + to);
+            emitBlank();
+            emit("add_header Alt-Svc 'h3=\":433\"; ma=86400'");
         }
     }
 }
