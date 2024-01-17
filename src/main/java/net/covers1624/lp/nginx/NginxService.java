@@ -328,6 +328,15 @@ public class NginxService {
                         emitBlank();
                         emit("keepalive_timeout 65");
                         emitBlank();
+                        emitBraced("server", () -> {
+                            emit("listen 80 default_server");
+                            emit("return 444");
+                        });
+                        emitBraced("server", () -> {
+                            emit("listen 443 ssl default_server");
+                            emit("ssl_reject_handshake on");
+                        });
+                        emitBlank();
                         emit("include " + nginxRootConfig.toAbsolutePath().normalize() + ".d/*.conf");
                     });
 
