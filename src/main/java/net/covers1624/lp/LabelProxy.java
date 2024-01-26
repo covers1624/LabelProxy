@@ -1,6 +1,7 @@
 package net.covers1624.lp;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import net.covers1624.curl4j.CABundle;
 import net.covers1624.lp.cloudflare.CloudflareService;
 import net.covers1624.lp.docker.DockerService;
 import net.covers1624.lp.docker.data.ContainerSummary;
@@ -60,7 +61,7 @@ public class LabelProxy {
     }
 
     public final Config config = Config.load(Path.of("./config.json"));
-    public final Curl4jHttpEngine httpEngine = new Curl4jHttpEngine();
+    public final Curl4jHttpEngine httpEngine = new Curl4jHttpEngine(CABundle.builtIn());
     public final DockerService docker = new DockerService(this, httpEngine);
     public final CloudflareService cloudflare = new CloudflareService(this, httpEngine);
     public final LetsEncryptService letsEncrypt = new LetsEncryptService(this, cloudflare);
