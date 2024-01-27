@@ -334,10 +334,14 @@ public class NginxService {
                         emitBlank();
                         emitBraced("server", () -> {
                             emit("listen 80 default_server");
+                            emit("listen [::]:80 default_server");
                             emit("return 444");
                         });
                         emitBraced("server", () -> {
                             emit("listen 443 ssl default_server");
+                            emit("listen 443 quic default_server reuseport");
+                            emit("listen [::]:443 ssl default_server");
+                            emit("listen [::]:443 quic default_server reuseport");
                             emit("ssl_reject_handshake on");
                         });
                         emitBlank();
@@ -479,9 +483,9 @@ public class NginxService {
         private void emitHttps(LetsEncryptService.CertInfo certInfo) {
             emitBraced("server", () -> {
                 emit("listen 443 ssl");
-                emit("listen 443 quic reuseport");
+                emit("listen 443 quic");
                 emit("listen [::]:443 ssl"); // One day we will have functioning ipv6
-                emit("listen [::]:443 quic reuseport");
+                emit("listen [::]:443 quic");
                 emit("http2 on");
                 emit("http3 on");
                 emit("server_name " + host.host);
