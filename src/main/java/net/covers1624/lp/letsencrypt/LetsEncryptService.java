@@ -185,23 +185,26 @@ public class LetsEncryptService {
                 CertInfo info;
                 // Request the certificate.
                 try {
-                    info = requestCertificate(host);
-                } catch (AcmeException | IOException ex) {
-                    throw new RuntimeException("Failed to issue certificate", ex);
-                }
-                // Write our cache.
-                try {
-                    JsonUtils.write(GSON, certsDir.resolve(host + ".json"), info);
-                } catch (IOException ex) {
-                    throw new RuntimeException("Failed to write cache.");
-                }
-                // Update global certs map.
-                synchronized (certs) {
-                    certs.put(host, info);
-                }
-                // Now we can nuke our future.
-                synchronized (pending) {
-                    pending.remove(host);
+                    try {
+                        info = requestCertificate(host);
+                    } catch (AcmeException | IOException ex) {
+                        throw new RuntimeException("Failed to issue certificate", ex);
+                    }
+                    // Write our cache.
+                    try {
+                        JsonUtils.write(GSON, certsDir.resolve(host + ".json"), info);
+                    } catch (IOException ex) {
+                        throw new RuntimeException("Failed to write cache.");
+                    }
+                    // Update global certs map.
+                    synchronized (certs) {
+                        certs.put(host, info);
+                    }
+                } finally {
+                    // Now we can nuke our future.
+                    synchronized (pending) {
+                        pending.remove(host);
+                    }
                 }
                 return info;
             }, EXECUTOR);
