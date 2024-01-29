@@ -53,6 +53,7 @@ public class ConfigParser {
                     Objects.requireNonNull(props.get("host"), "'host' property required for group " + group),
                     Integer.parseInt(props.getOrDefault("port", "80")),
                     Boolean.parseBoolean(props.getOrDefault("https_redir", "true")),
+                    Boolean.parseBoolean(props.getOrDefault("append_host_to_forwarded_host", "true")),
                     props.getOrDefault("location", "/"),
                     props.getOrDefault("proxy_pass", "")
             ));

@@ -14,6 +14,8 @@ public record ContainerConfiguration(
         int port,
         // If the proxy should force redirect http to https.
         boolean redirectToHttps,
+        // If the proxy should append the
+        boolean appendPortToForwardedHost,
         // The location to use, regex.
         String location,
         // The proxy_pass upstream pattern. $blah variables can be used from location.
