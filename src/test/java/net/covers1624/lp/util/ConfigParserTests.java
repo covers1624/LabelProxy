@@ -24,6 +24,7 @@ public class ConfigParserTests {
                                 "abcd",
                                 8080,
                                 false,
+                                true,
                                 "/abcd",
                                 "1234"
                         )
@@ -51,6 +52,7 @@ public class ConfigParserTests {
                                 "abcd",
                                 8080,
                                 false,
+                                true,
                                 "/abcd",
                                 "1234"
                         ),
@@ -60,6 +62,7 @@ public class ConfigParserTests {
                                 "1234",
                                 8181,
                                 false,
+                                true,
                                 "/1234",
                                 "abcd"
                         )
