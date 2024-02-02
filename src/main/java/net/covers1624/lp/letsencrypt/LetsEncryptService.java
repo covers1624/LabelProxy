@@ -339,7 +339,7 @@ public class LetsEncryptService {
         try {
             while (challenge.getStatus() != Status.VALID && waitSteps-- > 0) {
                 if (challenge.getStatus() == Status.INVALID) {
-                    LOGGER.error(" Failed DNS challenge. " + challenge.getError().orElse(null));
+                    LOGGER.error(DISCORD, " Failed DNS challenge. " + challenge.getError().orElse(null));
                     return false;
                 }
 
@@ -347,10 +347,10 @@ public class LetsEncryptService {
                 challenge.update();
             }
             if (challenge.getStatus() != Status.VALID) {
-                LOGGER.error(" Failed DNS challenge. Timeout reached.");
+                LOGGER.error(DISCORD, " Failed DNS challenge. Timeout reached.");
             }
         } catch (InterruptedException ex) {
-            LOGGER.error(" Interrupted whilst waiting for challenge.", ex);
+            LOGGER.error(DISCORD, " Interrupted whilst waiting for challenge.", ex);
             return false;
         }
         LOGGER.info("Cleaning up records..");
