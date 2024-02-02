@@ -29,11 +29,6 @@ public abstract class NginxConfigGenerator {
         pw.println("}");
     }
 
-    protected static String addStart(String add, String str) {
-        if (str.startsWith(add)) return str;
-        return add + str;
-    }
-
     public static abstract class Simple extends NginxConfigGenerator {
 
         public abstract String generate();
