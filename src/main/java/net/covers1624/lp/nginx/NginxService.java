@@ -364,13 +364,14 @@ public class NginxService {
         if (!prefix.isEmpty()) {
             prefix += "-";
         }
-        Path zip = config.nginx.dir.resolve("backups/" + prefix + "config-" + System.currentTimeMillis() + ".zip");
+        String zipName = prefix + "config-" + System.currentTimeMillis();
+        Path zip = config.nginx.dir.resolve("backups/" + zipName + ".zip");
         LOGGER.info("Creating config backup {}", zip.getFileName());
         try (ZipOutputStream zos = new ZipOutputStream(Files.newOutputStream(IOUtils.makeParents(zip)))) {
             try (Stream<Path> files = Files.walk(configDir)) {
                 for (Path file : (Iterable<? extends Path>) files::iterator) {
                     if (Files.isDirectory(file)) continue;
-                    zos.putNextEntry(new ZipEntry(configDir.relativize(file).toString()));
+                    zos.putNextEntry(new ZipEntry(zipName + "/" + configDir.relativize(file)));
                     Files.copy(file, zos);
                     zos.closeEntry();
                 }
