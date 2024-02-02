@@ -26,7 +26,8 @@ public class ConfigParserTests {
                                 false,
                                 true,
                                 "/abcd",
-                                "1234"
+                                "1234",
+                                null
                         )
                 ),
                 ConfigParser.parse(
@@ -54,7 +55,8 @@ public class ConfigParserTests {
                                 false,
                                 true,
                                 "/abcd",
-                                "1234"
+                                "1234",
+                                null
                         ),
                         new ContainerConfiguration(
                                 null,
@@ -64,7 +66,8 @@ public class ConfigParserTests {
                                 false,
                                 true,
                                 "/1234",
-                                "abcd"
+                                "abcd",
+                                null
                         )
                 ),
                 ConfigParser.parse(

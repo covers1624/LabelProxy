@@ -1,5 +1,7 @@
 package net.covers1624.lp;
 
+import org.jetbrains.annotations.Nullable;
+
 /**
  * Created by covers1624 on 2/11/23.
  */
@@ -19,6 +21,8 @@ public record ContainerConfiguration(
         // The location to use, regex.
         String location,
         // The proxy_pass upstream pattern. $blah variables can be used from location.
-        String proxyPass
+        String proxyPass,
+        // `rewrite` nginx directive.
+        @Nullable String rewrite
 ) {
 }

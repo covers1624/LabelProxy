@@ -55,7 +55,8 @@ public class ConfigParser {
                     Boolean.parseBoolean(props.getOrDefault("https_redir", "true")),
                     Boolean.parseBoolean(props.getOrDefault("append_host_to_forwarded_host", "true")),
                     props.getOrDefault("location", "/"),
-                    props.getOrDefault("proxy_pass", "")
+                    props.getOrDefault("proxy_pass", ""),
+                    props.get("rewrite")
             ));
         }
         LOGGER.info("Parsed {} configs from {}", configs.size(), container.id());
