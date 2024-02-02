@@ -526,7 +526,7 @@ public class NginxService {
 
         private void emitProxy(boolean https, ContainerConfiguration c) {
             String from = "http://" + c.ip() + ":" + c.port() + addStart("/", c.proxyPass());
-            String to = (https ? "https://" : "http://") + host.host + c.location();
+            String to = (https ? "https://" : "http://") + host.host;
             emit("proxy_pass " + from);
             emit("proxy_read_timeout 90");
             emit("proxy_max_temp_file_size 0");
