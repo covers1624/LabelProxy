@@ -21,7 +21,7 @@ public class ConfigParser {
 
     private static final String DEFAULT_GROUP = "default";
     // We technically don't read id, we only use it here to match properly.
-    private static final Pattern REGEX = Pattern.compile("^" + PREFIX + "(?:\\.(?<group>\\w*))?\\.(?<keyword>[a-zA-Z_]+)(?:.(?<id>\\d*))?$");
+    private static final Pattern REGEX = Pattern.compile("^" + PREFIX + "(?:\\.(?<group>\\w*))?\\.(?<keyword>[a-zA-Z_-]+)(?:.(?<id>\\d*))?$");
 
     public static List<ContainerConfiguration> parse(DockerContainer container, String ip) {
         Map<String, Map<String, List<String>>> groups = new HashMap<>();
