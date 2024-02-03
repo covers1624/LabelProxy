@@ -529,13 +529,13 @@ public class NginxService {
             String from = "http://" + c.ip() + ":" + c.port() + c.proxyPass();
             String to = (https ? "https://" : "http://") + host.host;
             emit("proxy_pass " + from);
-            if (c.rewrite() != null) {
-                emit("rewrite " + c.rewrite());
-            }
+            c.unknownKeywords().forEach((directive, values) -> {
+                values.forEach(v -> emit(directive + " " + v));
+            });
             emit("proxy_read_timeout 90");
             emit("proxy_max_temp_file_size 0");
             emitBlank();
-            emit("proxy_set_header Host $host" + (c.appendPortToForwardedHost() ? ":$server_port" : ""));
+            emit("proxy_set_header Host $host" + (c.verboseForwardHost() ? ":$server_port" : ""));
             emit("proxy_set_header X-Real-IP $remote_addr");
             emit("proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for");
             emit("proxy_set_header X-Forwarded-Proto $scheme");

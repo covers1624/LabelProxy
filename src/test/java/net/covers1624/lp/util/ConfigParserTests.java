@@ -1,5 +1,6 @@
 package net.covers1624.lp.util;
 
+import com.google.common.collect.ImmutableMap;
 import net.covers1624.lp.ContainerConfiguration;
 import net.covers1624.lp.docker.data.DockerContainer;
 import org.junit.jupiter.api.Test;
@@ -27,16 +28,18 @@ public class ConfigParserTests {
                                 true,
                                 "/abcd",
                                 "1234",
-                                null
+                                ImmutableMap.of("rewrite", List.of("a", "b"))
                         )
                 ),
                 ConfigParser.parse(
-                        container(Map.of(
+                        container(ImmutableMap.of(
                                 "LabelProxy.host", "abcd",
                                 "LabelProxy.port", "8080",
                                 "LabelProxy.https_redir", "false",
                                 "LabelProxy.location", "/abcd",
-                                "LabelProxy.proxy_pass", "1234"
+                                "LabelProxy.proxy_pass", "1234",
+                                "LabelProxy.rewrite.1", "a",
+                                "LabelProxy.rewrite.2", "b"
                         )),
                         null
                 )
@@ -56,7 +59,7 @@ public class ConfigParserTests {
                                 true,
                                 "/abcd",
                                 "1234",
-                                null
+                                ImmutableMap.of("rewrite", List.of("a", "b"))
                         ),
                         new ContainerConfiguration(
                                 null,
@@ -67,22 +70,33 @@ public class ConfigParserTests {
                                 true,
                                 "/1234",
                                 "abcd",
-                                null
+                                ImmutableMap.of("rewrite", List.of("a", "b"))
                         )
                 ),
                 ConfigParser.parse(
-                        container(Map.of(
-                                "LabelProxy.host", "abcd",
-                                "LabelProxy.port", "8080",
-                                "LabelProxy.https_redir", "false",
-                                "LabelProxy.location", "/abcd",
-                                "LabelProxy.proxy_pass", "1234",
-                                "LabelProxy.g1.host", "1234",
-                                "LabelProxy.g1.port", "8181",
-                                "LabelProxy.g1.https_redir", "false",
-                                "LabelProxy.g1.location", "/1234",
-                                "LabelProxy.g1.proxy_pass", "abcd"
-                        )),
+                        container(ImmutableMap.<String, String>builder()
+                                .putAll(ImmutableMap.of(
+                                                "LabelProxy.host", "abcd",
+                                                "LabelProxy.port", "8080",
+                                                "LabelProxy.https_redir", "false",
+                                                "LabelProxy.location", "/abcd",
+                                                "LabelProxy.proxy_pass", "1234",
+                                                "LabelProxy.rewrite.1", "a",
+                                                "LabelProxy.rewrite.2", "b"
+                                        )
+                                )
+                                .putAll(ImmutableMap.of(
+                                                "LabelProxy.g1.host", "1234",
+                                                "LabelProxy.g1.port", "8181",
+                                                "LabelProxy.g1.https_redir", "false",
+                                                "LabelProxy.g1.location", "/1234",
+                                                "LabelProxy.g1.proxy_pass", "abcd",
+                                                "LabelProxy.g1.rewrite.1", "a",
+                                                "LabelProxy.g1.rewrite.2", "b"
+                                        )
+                                )
+                                .build()
+                        ),
                         null
                 )
         );

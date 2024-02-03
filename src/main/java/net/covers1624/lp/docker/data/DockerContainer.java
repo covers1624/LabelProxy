@@ -31,7 +31,7 @@ public record DockerContainer(
         public Map<String, String> getLabels(String prefix) {
             return FastStream.of(labels.entrySet())
                     .filter(e->e.getKey().startsWith(prefix))
-                    .toMap(Map.Entry::getKey, Map.Entry::getValue);
+                    .toLinkedHashMap(Map.Entry::getKey, Map.Entry::getValue);
         }
     }
 
