@@ -11,6 +11,7 @@
 !Dockerfile
 
 !README.md
+!LICENSE.txt
 
 !.git/
 !.gitignore
