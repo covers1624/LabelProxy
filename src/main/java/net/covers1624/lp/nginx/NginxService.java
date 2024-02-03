@@ -9,6 +9,7 @@ import net.covers1624.lp.letsencrypt.LetsEncryptService;
 import net.covers1624.quack.collection.FastStream;
 import net.covers1624.quack.io.IOUtils;
 import net.covers1624.quack.util.SneakyUtils;
+import org.apache.commons.compress.utils.FileNameUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.Nullable;
@@ -385,10 +386,13 @@ public class NginxService {
     private void restoreConfigs(Path zip) {
         LOGGER.info("Restoring configs..");
         deleteDirectory(configDir);
+        String zipName = FileNameUtils.getBaseName(zip.getFileName().getFileName().toString());
         try (ZipInputStream zin = new ZipInputStream(Files.newInputStream(zip))) {
             ZipEntry entry;
             while ((entry = zin.getNextEntry()) != null) {
-                Files.copy(zin, IOUtils.makeParents(configDir.resolve(entry.getName())));
+                String name = entry.getName();
+                name = name.replace("/" + zipName, "");
+                Files.copy(zin, IOUtils.makeParents(configDir.resolve(name)));
             }
         } catch (IOException ex) {
             proxy.quit();
