@@ -9,4 +9,4 @@ RUN \
 COPY build/libs/LabelProxy.jar /app/LabelProxy.jar
 
 WORKDIR /app
-CMD exec java -Xms128M -Xmx256M -XX:+UseZGC -jar /app/LabelProxy.jar
+CMD ["java", "-Xms128M", "-Xmx256M", "-XX:+UseZGC", "-jar", "/app/LabelProxy.jar"]
