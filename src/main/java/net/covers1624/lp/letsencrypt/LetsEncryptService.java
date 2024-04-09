@@ -352,10 +352,11 @@ public class LetsEncryptService {
         } catch (InterruptedException ex) {
             LOGGER.error(DISCORD, " Interrupted whilst waiting for challenge.", ex);
             return false;
-        }
-        LOGGER.info("Cleaning up records..");
-        for (DnsRecord dnsRecord : dnsRecordResponse.result) {
-            cloudflare.deleteDNSRecord(zone, dnsRecord.id());
+        } finally {
+            LOGGER.info("Cleaning up records..");
+            for (DnsRecord dnsRecord : dnsRecordResponse.result) {
+                cloudflare.deleteDNSRecord(zone, dnsRecord.id());
+            }
         }
         return true;
     }
