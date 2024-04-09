@@ -335,11 +335,9 @@ public class LetsEncryptService {
                 .type(TXT)
         );
         LOGGER.info("Waiting for DNS to propagate.");
-        int sleepFor = 0;
         try {
-            while (sleepFor < 60) {
+            for (int i = 0; i < 60; i++) {
                 Thread.sleep(1000);
-                sleepFor++;
             }
         } catch (InterruptedException ex) {
             LOGGER.error(DISCORD, "Interrupted whilst waiting for dns to propagate.");
