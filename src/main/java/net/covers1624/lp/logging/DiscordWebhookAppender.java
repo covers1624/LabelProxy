@@ -10,15 +10,12 @@ import org.apache.logging.log4j.core.Layout;
 import org.apache.logging.log4j.core.LogEvent;
 import org.apache.logging.log4j.core.appender.AbstractAppender;
 import org.apache.logging.log4j.core.config.Property;
+import org.jetbrains.annotations.VisibleForTesting;
 
-import java.io.IOException;
 import java.io.Serializable;
-import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 /**
  * Created by covers1624 on 14/1/24.
@@ -26,7 +23,10 @@ import java.util.concurrent.Executors;
 public class DiscordWebhookAppender extends AbstractAppender {
 
     private static final Logger LOGGER = LogManager.getLogger();
-    private final List<String> queue = new ArrayList<>();
+
+    private static final int MAX_LEN = 2000;
+
+    private final LinkedList<String> queue = new LinkedList<>();
     private final Thread thread;
     private final Object WAIT_LOCK = new Object();
 
@@ -77,11 +77,11 @@ public class DiscordWebhookAppender extends AbstractAppender {
             try {
                 Thread.sleep(500);
             } catch (InterruptedException ignored) { }
-            List<String> toSend;
+
+            String toSend;
             synchronized (queue) {
                 if (queue.isEmpty()) continue;
-                toSend = new ArrayList<>(queue);
-                queue.clear();
+                toSend = fillBuffer(queue, MAX_LEN);
             }
             try {
                 new DiscordWebhook(Objects.requireNonNull(config.discord.webhookUrl))
@@ -110,4 +110,42 @@ public class DiscordWebhookAppender extends AbstractAppender {
             WAIT_LOCK.notifyAll();
         }
     }
+
+    @VisibleForTesting
+    static String fillBuffer(LinkedList<String> strings, int max) {
+        StringBuilder builder = new StringBuilder(max);
+        while (!strings.isEmpty()) {
+            String f = strings.peek();
+            if (!wouldOverflow(builder, f, max)) {
+                // We can deal with this string, pop it.
+                strings.pop();
+
+                if (!builder.isEmpty()) builder.append("\n");
+                builder.append(f);
+            } else {
+                // We would overflow the buffer by adding this string
+
+                // We already have content in the buffer, do nothing to this new string.
+                if (!builder.isEmpty()) break;
+
+                // This single string is too long for the buffer, we need to slice it.
+                strings.pop();
+
+                builder.append(f, 0, max);
+                strings.addFirst(f.substring(max));
+                break;
+            }
+        }
+        return builder.toString();
+    }
+
+    private static boolean wouldOverflow(StringBuilder dst, String src, int maxLen) {
+        int len = dst.length() + src.length();
+        if (!dst.isEmpty()) {
+            // newline
+            len++;
+        }
+        return len > maxLen;
+    }
+
 }
