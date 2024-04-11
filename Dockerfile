@@ -9,4 +9,8 @@ RUN \
 COPY build/libs/LabelProxy.jar /app/LabelProxy.jar
 
 WORKDIR /app
+
+STOPSIGNAL SIGTERM
+ENTRYPOINT []
+
 CMD ["java", "-Xms128M", "-Xmx256M", "-XX:+UseZGC", "-jar", "/app/LabelProxy.jar"]
