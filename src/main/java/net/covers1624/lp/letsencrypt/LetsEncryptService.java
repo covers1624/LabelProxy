@@ -36,10 +36,7 @@ import java.security.cert.CertificateEncodingException;
 import java.security.cert.X509Certificate;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -47,8 +44,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 
-import static net.covers1624.lp.logging.Markers.DISCORD;
 import static net.covers1624.lp.cloudflare.data.dns.RecordType.TXT;
+import static net.covers1624.lp.logging.Markers.DISCORD;
 
 /**
  * Created by covers1624 on 4/11/23.
@@ -154,14 +151,31 @@ public class LetsEncryptService {
     }
 
     public void expiryScan() {
-        Instant nextWeek = Instant.now()
+        Instant now = Instant.now();
+        Instant nextWeek = now
                 .plus(7, ChronoUnit.DAYS);
         synchronized (certs) {
+            Set<CertInfo> toRemove = new HashSet<>();
             for (CertInfo info : certs.values()) {
                 if (pending.containsKey(info.host)) continue;
                 if (!nextWeek.isAfter(info.expiresAt.toInstant())) continue;
+                if (!proxy.nginx.getActiveHosts().contains(info.host)) {
+                    if (now.isAfter(info.expiresAt.toInstant())) {
+                        toRemove.add(info);
+                    }
+                    continue;
+                }
 
                 renewCertificate(info);
+            }
+            for (CertInfo rem : toRemove) {
+                LOGGER.info(DISCORD, "Removing unused certificate for {}", rem);
+                try {
+                    rem.delete(certsDir);
+                    certs.remove(rem.host);
+                } catch (IOException ex) {
+                    LOGGER.error(DISCORD, "Failed to delete cert cache.", ex);
+                }
             }
         }
     }
@@ -173,8 +187,18 @@ public class LetsEncryptService {
     public CompletableFuture<CertInfo> getCertificates(String host, boolean force) {
         CertInfo ret;
         if (!force) {
-            ret = certs.get(host);
-            if (ret != null) return CompletableFuture.completedFuture(ret);
+            synchronized (certs) {
+                ret = certs.get(host);
+                if (ret != null) {
+                    certs.put(host, ret);
+                    try {
+                        ret.save(certsDir);
+                    } catch (IOException ex) {
+                        LOGGER.warn(DISCORD, "Failed to update certificate cache with new lastUsed.", ex);
+                    }
+                    return CompletableFuture.completedFuture(ret);
+                }
+            }
         }
 
         synchronized (pending) {
@@ -192,7 +216,7 @@ public class LetsEncryptService {
                     }
                     // Write our cache.
                     try {
-                        JsonUtils.write(GSON, certsDir.resolve(host + ".json"), info);
+                        info.save(certsDir);
                     } catch (IOException ex) {
                         throw new RuntimeException("Failed to write cache.");
                     }
@@ -218,7 +242,7 @@ public class LetsEncryptService {
         getCertificates(info.host, true)
                 .thenAcceptAsync(proxy.nginx::onRenewCertificates)
                 .exceptionally(ex -> {
-                    LOGGER.error("Failed to regen certificates for {}", info.host, ex);
+                    LOGGER.error(DISCORD, "Failed to regen certificates for {}", info.host, ex);
                     return null;
                 });
     }
@@ -388,6 +412,14 @@ public class LetsEncryptService {
             @JsonAdapter (PathTypeAdapter.class) Path chain,
             @JsonAdapter (PathTypeAdapter.class) Path fullChain
     ) {
+
+        public void save(Path certsDir) throws IOException {
+            JsonUtils.write(GSON, certsDir.resolve(host + ".json"), this);
+        }
+
+        public void delete(Path certsDir) throws IOException {
+            Files.delete(certsDir.resolve(host + ".json"));
+        }
     }
 
     private record AccountJson(

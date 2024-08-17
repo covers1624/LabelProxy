@@ -139,7 +139,13 @@ public class NginxService {
 
     public void onRenewCertificates(LetsEncryptService.CertInfo newInfo) {
         NginxHost host = hosts.get(newInfo.host());
+        if (host == null) return;
+
         buildConfig(host);
+    }
+
+    public Set<String> getActiveHosts() {
+        return hosts.keySet();
     }
 
     public void rebuild(Collection<ContainerConfiguration> configurations) {
