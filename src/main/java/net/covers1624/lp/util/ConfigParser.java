@@ -2,6 +2,7 @@ package net.covers1624.lp.util;
 
 import net.covers1624.lp.ContainerConfiguration;
 import net.covers1624.lp.docker.data.DockerContainer;
+import net.covers1624.quack.collection.FastStream;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.Nullable;
@@ -59,6 +60,8 @@ public class ConfigParser {
                     Boolean.parseBoolean(singleOrDefault(props.remove("verbose_forwarded_host"), "true")),
                     singleOrDefault(props.remove("location"), "/"),
                     singleOrDefault(props.remove("proxy_pass"), ""),
+                    FastStream.of(multiOrDefault(props.remove("allow"), List.of())).flatMap(e -> FastStream.of(e.split(",")).map(String::trim)).toList(),
+                    FastStream.of(multiOrDefault(props.remove("deny"), List.of())).flatMap(e -> FastStream.of(e.split(",")).map(String::trim)).toList(),
                     props
             ));
             if (!props.isEmpty()) {
@@ -90,5 +93,11 @@ public class ConfigParser {
             throw new IllegalArgumentException("Option '" + opt + "' is required.");
         }
         return arg;
+    }
+
+    private static List<String> multiOrDefault(@Nullable List<String> strings, List<String> _default) {
+        if (strings == null) return _default;
+
+        return strings;
     }
 }

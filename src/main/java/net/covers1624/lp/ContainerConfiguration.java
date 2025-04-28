@@ -25,6 +25,10 @@ public record ContainerConfiguration(
         String location,
         // The proxy_pass upstream pattern. $blah variables can be used from location.
         String proxyPass,
+        // Explicit allow directives.
+        List<String> allow,
+        // Explicit deny directives.
+        List<String> deny,
         // Unknown keywords, mapped directly to nginx directives.
         Map<String, List<String>> unknownKeywords
 ) {

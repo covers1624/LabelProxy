@@ -480,6 +480,7 @@ public class NginxService {
                 for (ContainerConfiguration container : host.containers) {
                     emitBlank();
                     emitBraced("location " + container.location(), () -> {
+                        emitAllowDenyDirectives(container);
                         if (container.redirectToHttps()) {
                             emit("add_header Alt-Svc 'h3=\":443\"; ma=86400'");
                             emit("return 301 https://" + host.host + "$request_uri");
@@ -529,10 +530,24 @@ public class NginxService {
                 for (ContainerConfiguration container : host.containers) {
                     emitBlank();
                     emitBraced("location " + container.location(), () -> {
+                        emitAllowDenyDirectives(container);
                         emitProxy(true, container);
                     });
                 }
             });
+        }
+
+        private void emitAllowDenyDirectives(ContainerConfiguration c) {
+            for (String s : c.deny()) {
+                emit("deny " + s);
+            }
+            var allow = c.allow();
+            if (!allow.isEmpty()) {
+                for (String s : allow) {
+                    emit("allow " + s);
+                }
+                emit("deny all");
+            }
         }
 
         private void emitProxy(boolean https, ContainerConfiguration c) {
