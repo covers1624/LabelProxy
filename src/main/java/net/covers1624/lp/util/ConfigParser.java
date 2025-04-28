@@ -51,6 +51,15 @@ public class ConfigParser {
             LOGGER.info("Parsing group: {}", entry.getKey());
             Map<String, List<String>> props = entry.getValue();
 
+            var allow = FastStream.of(multiOrDefault(props.remove("allow"), List.of())).flatMap(e -> FastStream.of(e.split(",")).map(String::trim)).toList();
+            var deny = FastStream.of(multiOrDefault(props.remove("deny"), List.of())).flatMap(e -> FastStream.of(e.split(",")).map(String::trim)).toList();
+            if (Boolean.parseBoolean(singleOrDefault(props.remove("allow_local_only"), "false"))) {
+                // adding any allows, automatically adds a `deny all` at the end of the config.
+                allow.add("10.0.0.0/8");
+                allow.add("172.16.0.0/12");
+                allow.add("192.168.0.0/16");
+            }
+
             configs.add(new ContainerConfiguration(
                     container.id(),
                     ip,
@@ -60,8 +69,8 @@ public class ConfigParser {
                     Boolean.parseBoolean(singleOrDefault(props.remove("verbose_forwarded_host"), "true")),
                     singleOrDefault(props.remove("location"), "/"),
                     singleOrDefault(props.remove("proxy_pass"), ""),
-                    FastStream.of(multiOrDefault(props.remove("allow"), List.of())).flatMap(e -> FastStream.of(e.split(",")).map(String::trim)).toList(),
-                    FastStream.of(multiOrDefault(props.remove("deny"), List.of())).flatMap(e -> FastStream.of(e.split(",")).map(String::trim)).toList(),
+                    allow,
+                    deny,
                     props
             ));
             if (!props.isEmpty()) {

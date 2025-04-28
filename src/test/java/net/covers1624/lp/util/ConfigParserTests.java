@@ -51,6 +51,40 @@ public class ConfigParserTests {
     }
 
     @Test
+    public void testLocalOnly() {
+        assertEquals(
+                List.of(
+                        new ContainerConfiguration(
+                                null,
+                                null,
+                                "abcd",
+                                8080,
+                                false,
+                                true,
+                                "/abcd",
+                                "1234",
+                                List.of("10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"),
+                                List.of(),
+                                ImmutableMap.of("rewrite", List.of("a", "b"))
+                        )
+                ),
+                ConfigParser.parse(
+                        container(ImmutableMap.of(
+                                "LabelProxy.host", "abcd",
+                                "LabelProxy.port", "8080",
+                                "LabelProxy.https_redir", "false",
+                                "LabelProxy.location", "/abcd",
+                                "LabelProxy.proxy_pass", "1234",
+                                "LabelProxy.rewrite.1", "a",
+                                "LabelProxy.rewrite.2", "b",
+                                "LabelProxy.allow_local_only", "true"
+                        )),
+                        null
+                )
+        );
+    }
+
+    @Test
     public void testMultipleGroups() {
         assertEquals(
                 List.of(
