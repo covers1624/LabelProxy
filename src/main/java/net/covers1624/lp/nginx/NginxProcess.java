@@ -4,6 +4,7 @@ import net.covers1624.lp.Config;
 import net.covers1624.lp.LabelProxy;
 import net.covers1624.quack.io.IOUtils;
 import org.apache.commons.compress.compressors.bzip2.BZip2CompressorOutputStream;
+import org.apache.commons.compress.utils.FileNameUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -11,7 +12,6 @@ import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Collections;
@@ -68,13 +68,17 @@ public class NginxProcess extends Thread {
 
     public void rotateLogs() {
         LOGGER.info("Rotating nginx logs..");
+        // rotateLogs is called roughly when we roll to the next day, we sub 2 hours to
+        // get _a_ time yesterday, we don't care about thew actual time as the format is YYYY-MM-DD
         String date = DATE_FORMATTER.format(LocalDateTime.now().minusHours(2));
         try {
-            Path accessRotated = Files.move(accessLog, accessLog.resolveSibling(accessLog.getFileName() + ".rotated"));
-            Path errorRotated = Files.move(errorLog, errorLog.resolveSibling(errorLog.getFileName() + ".rotated"));
+            Path accessRotated = Files.move(accessLog, accessLog.resolveSibling(FileNameUtils.getBaseName(accessLog.getFileName()) + "-" + date + ".log"));
+            Path errorRotated = Files.move(errorLog, errorLog.resolveSibling(FileNameUtils.getBaseName(errorLog.getFileName()) + "-" + date + ".log"));
             signalNginx("-s", "reopen");
-            compressLog(accessRotated, accessLog.resolveSibling(accessLog.getFileName() + "-" + date + ".bz2"));
-            compressLog(errorRotated, errorLog.resolveSibling(errorLog.getFileName() + "-" + date + ".bz2"));
+            if (config.nginx.compressLogsOnRotate) {
+                compressLog(accessRotated, accessLog.resolveSibling(accessRotated.getFileName() + ".bz2"));
+                compressLog(errorRotated, errorLog.resolveSibling(accessRotated.getFileName() + ".bz2"));
+            }
             LOGGER.info("Logs rotated!");
         } catch (IOException ex) {
             LOGGER.error(DISCORD, "Failed to rotate nginx logs.");

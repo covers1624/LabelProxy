@@ -54,6 +54,7 @@ public class Config {
         public String workers = "auto";
         public String workerConnections = "1024";
         public String logFormat = "$host $remote_addr - $remote_user [$time_local] \"$request\" $status $body_bytes_sent \"$http_referer\" \"$http_user_agent\" \"$http_x_forwarded_for\"";
+        public boolean compressLogsOnRotate = true;
     }
 
     public static class LetsEncrypt {
