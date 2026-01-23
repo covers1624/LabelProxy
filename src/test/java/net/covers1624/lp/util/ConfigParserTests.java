@@ -21,7 +21,7 @@ public class ConfigParserTests {
                 List.of(
                         new ContainerConfiguration(
                                 null,
-                                null,
+                                "",
                                 "abcd",
                                 8080,
                                 false,
@@ -45,7 +45,7 @@ public class ConfigParserTests {
                                 "LabelProxy.allow", "1.1.1.1,2.2.2.2",
                                 "LabelProxy.deny", "2.2.2.2,3.3.3.3"
                         )),
-                        null
+                        ""
                 )
         );
     }
@@ -56,7 +56,7 @@ public class ConfigParserTests {
                 List.of(
                         new ContainerConfiguration(
                                 null,
-                                null,
+                                "",
                                 "abcd",
                                 8080,
                                 false,
@@ -79,7 +79,7 @@ public class ConfigParserTests {
                                 "LabelProxy.rewrite.2", "b",
                                 "LabelProxy.allow_local_only", "true"
                         )),
-                        null
+                        ""
                 )
         );
     }
@@ -90,7 +90,7 @@ public class ConfigParserTests {
                 List.of(
                         new ContainerConfiguration(
                                 null,
-                                null,
+                                "",
                                 "abcd",
                                 8080,
                                 false,
@@ -103,7 +103,7 @@ public class ConfigParserTests {
                         ),
                         new ContainerConfiguration(
                                 null,
-                                null,
+                                "",
                                 "1234",
                                 8181,
                                 false,
@@ -145,7 +145,7 @@ public class ConfigParserTests {
                                 )
                                 .build()
                         ),
-                        null
+                        ""
                 )
         );
     }

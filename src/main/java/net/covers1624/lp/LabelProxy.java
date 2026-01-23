@@ -22,6 +22,7 @@ import org.apache.logging.log4j.core.config.Configuration;
 import org.apache.logging.log4j.core.filter.MarkerFilter;
 import org.apache.logging.log4j.core.layout.PatternLayout;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -88,7 +89,10 @@ public class LabelProxy {
         if (!letsEncrypt.validate()) return 1;
         if (!prepareNetwork()) return 1;
 
-        attachToNetwork();
+        var ownContainer = findOwnContainer();
+        if (ownContainer != null) {
+            attachToNetwork(ownContainer);
+        }
 
         letsEncrypt.setup();
         nginx.startNginx();
@@ -105,7 +109,7 @@ public class LabelProxy {
         int counter = 0;
         while (running) {
             try {
-                scanContainers();
+                scanContainers(ownContainer);
             } catch (Throwable ex) {
                 LOGGER.error(DISCORD, "Failed to scan containers.", ex);
             }
@@ -187,20 +191,23 @@ public class LabelProxy {
         return true;
     }
 
-    private void attachToNetwork() {
+    private @Nullable DockerContainer findOwnContainer() {
         String hostname = System.getenv("HOSTNAME");
         if (hostname == null || hostname.isEmpty()) {
             LOGGER.info("HOSTNAME env var not detected. Assuming we aren't in docker.");
-            return;
+            return null;
         }
-        LOGGER.info("Detected hostname of '{}' attempting to attach ourselves to the http network.", hostname);
+        LOGGER.info("Detected hostname of '{}' attempting to resolve container..", hostname);
 
         DockerContainer container = docker.inspectContainer(hostname);
         if (container == null) {
             LOGGER.warn("Unable to lookup container from hostname. Assuming we aren't in docker.");
-            return;
+            return null;
         }
+        return container;
+    }
 
+    private void attachToNetwork(DockerContainer container) {
         if (container.networkSettings().networks().containsKey(config.docker.network)) {
             LOGGER.info("Already attached to network!");
             return;
@@ -210,7 +217,7 @@ public class LabelProxy {
         docker.connectNetwork(config.docker.network, container.id());
     }
 
-    private void scanContainers() {
+    private void scanContainers(@Nullable DockerContainer ownContainer) {
         boolean containersModified = false;
 
         List<ContainerSummary> summaries = docker.listContainers();
@@ -224,16 +231,21 @@ public class LabelProxy {
             if (containerConfigs.containsKey(id) || broken.contains(id)) continue;
             if (!container.config().hasLabelWithPrefix(PREFIX)) continue;
             LOGGER.info(DISCORD, "New container found: {}", id);
+            boolean self = ownContainer != null && ownContainer.id().equals(id);
 
             try {
-                DockerContainer.Network network = container.networkSettings().networks().get(config.docker.network);
-                if (network == null) {
-                    LOGGER.info("Attaching container to {} network.", config.docker.network);
-                    container = docker.connectNetwork(config.docker.network, id);
+
+                DockerContainer.Network network = null;
+                if (!self) {
                     network = container.networkSettings().networks().get(config.docker.network);
+                    if (network == null) {
+                        LOGGER.info("Attaching container to {} network.", config.docker.network);
+                        container = docker.connectNetwork(config.docker.network, id);
+                        network = container.networkSettings().networks().get(config.docker.network);
+                    }
                 }
 
-                List<ContainerConfiguration> containerConfiguration = ConfigParser.parse(container, network.ipAddress());
+                List<ContainerConfiguration> containerConfiguration = ConfigParser.parse(container, network != null ? network.ipAddress() : null);
                 containerConfigs.put(id, containerConfiguration);
                 containersModified = true;
             } catch (Throwable ex) {

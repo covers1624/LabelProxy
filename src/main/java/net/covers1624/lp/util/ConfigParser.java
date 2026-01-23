@@ -24,7 +24,7 @@ public class ConfigParser {
     // We technically don't read id, we only use it here to match properly.
     private static final Pattern REGEX = Pattern.compile("^" + PREFIX + "(?:\\.(?<group>[\\w-]*))?\\.(?<keyword>[a-zA-Z_]+)(?:.(?<id>\\d*))?$");
 
-    public static List<ContainerConfiguration> parse(DockerContainer container, String ip) {
+    public static List<ContainerConfiguration> parse(DockerContainer container, @Nullable String ip) {
         Map<String, Map<String, List<String>>> groups = new HashMap<>();
 
         Matcher matcher = REGEX.matcher("");
@@ -62,7 +62,7 @@ public class ConfigParser {
 
             configs.add(new ContainerConfiguration(
                     container.id(),
-                    ip,
+                    ip != null ? ip : single(props.remove("ip"), "ip"),
                     single(props.remove("host"), "host"),
                     Integer.parseInt(singleOrDefault(props.remove("port"), "80")),
                     Boolean.parseBoolean(singleOrDefault(props.remove("https_redir"), "true")),
