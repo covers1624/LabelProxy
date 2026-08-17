@@ -339,6 +339,15 @@ public class NginxService {
                         emitBlank();
                         emit("keepalive_timeout 65");
                         emitBlank();
+                        // Only send `Connection: upgrade` upstream when the client actually
+                        // asked for an upgrade. An empty value makes nginx omit the header
+                        // entirely, which since 1.29.7 is the default and preserves the
+                        // upstream keepalive cache. See ngx_http_upstream_module#keepalive.
+                        emitBraced("map $http_upgrade $connection_upgrade", () -> {
+                            emit("default upgrade");
+                            emit("'' ''");
+                        });
+                        emitBlank();
                         emitBraced("server", () -> {
                             emit("listen 80 default_server");
                             emit("listen [::]:80 default_server");
@@ -567,7 +576,7 @@ public class NginxService {
             emit("proxy_set_header X-Scheme $scheme");
             emit("proxy_set_header Referer $http_referer");
             emit("proxy_set_header Upgrade $http_upgrade");
-            emit("proxy_set_header Connection \"upgrade\"");
+            emit("proxy_set_header Connection $connection_upgrade");
             emitBlank();
             emit("proxy_set_header X-Forwarded-Server $host");
             emit("proxy_set_header X-Forwarded-Host $host");
