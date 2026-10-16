@@ -566,7 +566,9 @@ public class NginxService {
             c.unknownKeywords().forEach((directive, values) -> {
                 values.forEach(v -> emit(directive + " " + v));
             });
-            emit("proxy_read_timeout 90");
+            if (!c.unknownKeywords().containsKey("proxy_read_timeout")) {
+                emit("proxy_read_timeout 90");
+            }
             emit("proxy_max_temp_file_size 0");
             emitBlank();
             emit("proxy_set_header Host $host" + (c.verboseForwardHost() ? ":$server_port" : ""));
