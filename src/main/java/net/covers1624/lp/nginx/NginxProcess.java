@@ -77,7 +77,7 @@ public class NginxProcess extends Thread {
             signalNginx("-s", "reopen");
             if (config.nginx.compressLogsOnRotate) {
                 compressLog(accessRotated, accessLog.resolveSibling(accessRotated.getFileName() + ".bz2"));
-                compressLog(errorRotated, errorLog.resolveSibling(accessRotated.getFileName() + ".bz2"));
+                compressLog(errorRotated, errorLog.resolveSibling(errorRotated.getFileName() + ".bz2"));
             }
             LOGGER.info("Logs rotated!");
         } catch (IOException ex) {
