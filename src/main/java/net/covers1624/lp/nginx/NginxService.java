@@ -528,10 +528,14 @@ public class NginxService {
                 emitBlank();
                 emit("resolver 1.1.1.1 8.8.8.8 valid=300s");
                 emit("resolver_timeout 5s");
-                emitBlank();
-                emit("add_header Strict-Transport-Security \"max-age=63072000; includeSubdomains\"");
-                emit("add_header X-Frame-Options SAMEORIGIN");
-                emit("add_header X-Content-Type-Options nosniff");
+
+                // These are currently inactive due to the location-level `add_header` emitted for Alt-Svc.
+                // Enabling these out of the blue could cause things to break.
+                // TODO add config options per-host to enable hsts and such.
+//                emitBlank();
+//                emit("add_header Strict-Transport-Security \"max-age=63072000; includeSubdomains\"");
+//                emit("add_header X-Frame-Options SAMEORIGIN");
+//                emit("add_header X-Content-Type-Options nosniff");
 
                 for (ContainerConfiguration container : host.containers) {
                     emitBlank();
