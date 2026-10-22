@@ -34,6 +34,7 @@ import java.nio.file.Path;
 import java.security.KeyPair;
 import java.security.cert.CertificateEncodingException;
 import java.security.cert.X509Certificate;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
@@ -260,7 +261,14 @@ public class LetsEncryptService {
                 throw new AcmeException("Failed Authorization.");
             }
         }
-        LOGGER.info("Authorized! Processing order..");
+        LOGGER.info("Authorized! Awaiting order ready..");
+        try {
+            order.waitUntilReady(Duration.ofMinutes(5));
+        } catch (InterruptedException ex) {
+            throw new AcmeException("Interrupted waiting for order to be ready.", ex);
+        }
+
+        LOGGER.info("Processing order..");
 
         KeyPair domainKey = KeyPairUtils.createECKeyPair("secp256r1");
         CSRBuilder[] csrBuilder = { null };
@@ -272,8 +280,12 @@ public class LetsEncryptService {
                     throw new AcmeException("Order Failed. " + order.getError().orElse(null));
                 }
 
-                Thread.sleep(TimeUnit.SECONDS.toMillis(3));
-                order.update();
+                var retryTime = order.fetch()
+                                .orElseGet(() -> Instant.now().plus(3, ChronoUnit.SECONDS));
+                var downtime = Duration.between(Instant.now(), retryTime);
+                if (downtime.isPositive()) {
+                    Thread.sleep(downtime);
+                }
             }
             if (order.getStatus() != Status.VALID) {
                 throw new AcmeException("Failed Order, timeout reached..");
@@ -354,7 +366,7 @@ public class LetsEncryptService {
         LOGGER.info(" Creating CloudFlare DNS record..");
         CreateDNSRecordResponse dnsRecordResponse = cloudflare.createDNSRecord(zone, new RecordBuilder()
                 .ttl(60)
-                .name(Dns01Challenge.toRRName(domain))
+                .name(challenge.getRRName(domain))
                 .content(challenge.getDigest())
                 .type(TXT)
         );
@@ -375,8 +387,12 @@ public class LetsEncryptService {
                     return false;
                 }
 
-                Thread.sleep(TimeUnit.SECONDS.toMillis(3));
-                challenge.update();
+                var retryTime = challenge.fetch()
+                        .orElseGet(() -> Instant.now().plus(3, ChronoUnit.SECONDS));
+                var downtime = Duration.between(Instant.now(), retryTime);
+                if (downtime.isPositive()) {
+                    Thread.sleep(downtime);
+                }
             }
             if (challenge.getStatus() != Status.VALID) {
                 LOGGER.error(DISCORD, " Failed DNS challenge. Timeout reached.");

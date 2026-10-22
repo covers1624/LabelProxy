@@ -32,7 +32,7 @@ dependencies {
     implementation 'com.google.guava:guava:33.7.2-jre'
     implementation 'com.google.code.gson:gson:2.14.0'
 
-    implementation 'org.shredzone.acme4j:acme4j-client:3.1.0'
+    implementation 'org.shredzone.acme4j:acme4j-client:5.0.0'
 
     compileOnly 'org.jetbrains:annotations:23.1.0'
     compileOnly 'com.google.code.findbugs:jsr305:3.0.2'
