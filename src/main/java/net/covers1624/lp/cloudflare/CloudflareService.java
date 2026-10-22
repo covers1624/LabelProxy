@@ -14,8 +14,8 @@ import net.covers1624.quack.collection.FastStream;
 import net.covers1624.quack.gson.JsonUtils;
 import net.covers1624.quack.net.httpapi.EngineRequest;
 import net.covers1624.quack.net.httpapi.EngineResponse;
+import net.covers1624.quack.net.httpapi.HttpEngine;
 import net.covers1624.quack.net.httpapi.WebBody;
-import net.covers1624.quack.net.httpapi.curl4j.Curl4jHttpEngine;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -36,11 +36,11 @@ public class CloudflareService {
     private static final Gson GSON = new Gson();
 
     private final Config config;
-    private final Curl4jHttpEngine httpEngine;
+    private final HttpEngine httpEngine;
 
     private final Map<String, ZoneInfo> zones = new HashMap<>();
 
-    public CloudflareService(LabelProxy proxy, Curl4jHttpEngine httpEngine) {
+    public CloudflareService(LabelProxy proxy, HttpEngine httpEngine) {
         this.config = proxy.config;
         this.httpEngine = httpEngine;
     }

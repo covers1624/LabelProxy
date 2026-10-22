@@ -1,21 +1,20 @@
 package net.covers1624.lp.docker;
 
 import com.google.gson.Gson;
-import net.covers1624.lp.Config;
 import net.covers1624.lp.LabelProxy;
 import net.covers1624.lp.docker.data.ContainerSummary;
 import net.covers1624.lp.docker.data.DockerContainer;
 import net.covers1624.lp.docker.data.DockerNetwork;
 import net.covers1624.quack.gson.JsonUtils;
+import net.covers1624.quack.net.httpapi.HttpEngine;
 import net.covers1624.quack.net.httpapi.WebBody;
-import net.covers1624.quack.net.httpapi.curl4j.Curl4jEngineRequest;
-import net.covers1624.quack.net.httpapi.curl4j.Curl4jEngineResponse;
-import net.covers1624.quack.net.httpapi.curl4j.Curl4jHttpEngine;
+import net.covers1624.quack.net.httpapi.apache5.Apache5Engine;
+import org.apache.hc.client5.http.config.RequestConfig;
+import org.apache.hc.client5.http.impl.classic.HttpClientBuilder;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -27,20 +26,22 @@ public class DockerService {
 
     private static final Gson GSON = new Gson();
 
-    private final Config config;
-    private final Curl4jHttpEngine httpEngine;
+    private final HttpEngine httpEngine;
 
-    public DockerService(LabelProxy proxy, Curl4jHttpEngine httpEngine) {
-        this.config = proxy.config;
-        this.httpEngine = httpEngine;
+    public DockerService(LabelProxy proxy) {
+        httpEngine = Apache5Engine.create(HttpClientBuilder.create()
+                .setDefaultRequestConfig(RequestConfig.custom()
+                        .setUnixDomainSocket(Path.of(proxy.config.docker.socket))
+                        .build())
+                .build()
+        );
     }
 
     public @Nullable DockerNetwork inspectNetwork(String name) {
-        Curl4jEngineRequest request = httpEngine.newRequest()
+        var request = httpEngine.newRequest()
                 .method("GET", null)
-                .unixSocket(config.docker.socket)
                 .url("http://v1.25/networks/" + name);
-        try (Curl4jEngineResponse resp = request.execute()) {
+        try (var resp = request.execute()) {
             if (resp.statusCode() == 404) return null;
 
             WebBody body = resp.body();
@@ -53,15 +54,14 @@ public class DockerService {
     }
 
     public DockerNetwork createNetwork(String name) {
-        Curl4jEngineRequest request = httpEngine.newRequest()
+        var request = httpEngine.newRequest()
                 .method("POST", jsonBody(Map.of(
                         "Name", name,
                         "CheckDuplicates", true,
                         "Driver", "bridge"
                 )))
-                .unixSocket(config.docker.socket)
                 .url("http://v1.25/networks/create");
-        try (Curl4jEngineResponse resp = request.execute()) {
+        try (var resp = request.execute()) {
             if (resp.statusCode() != 201) throw new IllegalStateException("Expected 201 response. Got: " + resp.statusCode());
 
             WebBody body = resp.body();
@@ -77,11 +77,10 @@ public class DockerService {
     }
 
     public List<ContainerSummary> listContainers() {
-        Curl4jEngineRequest request = httpEngine.newRequest()
+        var request = httpEngine.newRequest()
                 .method("GET", null)
-                .unixSocket(config.docker.socket)
                 .url("http://v1.25/containers/json");
-        try (Curl4jEngineResponse resp = request.execute()) {
+        try (var resp = request.execute()) {
             if (resp.statusCode() != 200) throw new IllegalStateException("Expected 200 response. Got: " + resp.statusCode());
 
             WebBody body = resp.body();
@@ -94,11 +93,10 @@ public class DockerService {
     }
 
     public @Nullable DockerContainer inspectContainer(String id) {
-        Curl4jEngineRequest request = httpEngine.newRequest()
+        var request = httpEngine.newRequest()
                 .method("GET", null)
-                .unixSocket(config.docker.socket)
                 .url("http://v1.25/containers/" + id + "/json");
-        try (Curl4jEngineResponse resp = request.execute()) {
+        try (var resp = request.execute()) {
             if (resp.statusCode() == 404) return null;
             if (resp.statusCode() != 200) throw new IllegalStateException("Expected 200 response. Got: " + resp.statusCode());
 
@@ -112,13 +110,12 @@ public class DockerService {
     }
 
     public DockerContainer connectNetwork(String network, String container) {
-        Curl4jEngineRequest request = httpEngine.newRequest()
+        var request = httpEngine.newRequest()
                 .method("POST", jsonBody(Map.of(
                         "Container", container
                 )))
-                .unixSocket(config.docker.socket)
                 .url("http://v1.25/networks/" + network + "/connect");
-        try (Curl4jEngineResponse resp = request.execute()) {
+        try (var resp = request.execute()) {
             if (resp.statusCode() != 200) {
                 throw new IllegalStateException("Expected 201 response. Got: " + resp.statusCode());
             }

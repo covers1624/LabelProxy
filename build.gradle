@@ -24,8 +24,8 @@ dependencies {
     implementation 'org.apache.logging.log4j:log4j-core:2.21.1'
     implementation 'org.apache.logging.log4j:log4j-slf4j2-impl:2.21.1'
 
-    implementation 'net.covers1624:Quack:0.4.10.90'
-    implementation 'net.covers1624:curl4j:3.0.5:libcurl'
+    implementation 'net.covers1624:Quack:0.4.10.130'
+    implementation 'org.apache.httpcomponents.client5:httpclient5:5.6.5'
 
     implementation 'org.apache.commons:commons-compress:1.25.0'
 

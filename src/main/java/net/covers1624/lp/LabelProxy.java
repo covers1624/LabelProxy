@@ -1,7 +1,6 @@
 package net.covers1624.lp;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import net.covers1624.curl4j.CABundle;
 import net.covers1624.lp.cloudflare.CloudflareService;
 import net.covers1624.lp.docker.DockerService;
 import net.covers1624.lp.docker.data.ContainerSummary;
@@ -12,7 +11,8 @@ import net.covers1624.lp.logging.DiscordWebhookAppender;
 import net.covers1624.lp.nginx.NginxService;
 import net.covers1624.lp.util.ConfigParser;
 import net.covers1624.quack.collection.FastStream;
-import net.covers1624.quack.net.httpapi.curl4j.Curl4jHttpEngine;
+import net.covers1624.quack.net.httpapi.HttpEngine;
+import net.covers1624.quack.net.httpapi.apache5.Apache5Engine;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -62,8 +62,8 @@ public class LabelProxy {
     }
 
     public final Config config = Config.load(Path.of("./config.json"));
-    public final Curl4jHttpEngine httpEngine = new Curl4jHttpEngine(CABundle.builtIn());
-    public final DockerService docker = new DockerService(this, httpEngine);
+    public final DockerService docker = new DockerService(this);
+    public final HttpEngine httpEngine = Apache5Engine.create();
     public final CloudflareService cloudflare = new CloudflareService(this, httpEngine);
     public final LetsEncryptService letsEncrypt = new LetsEncryptService(this, cloudflare);
 
