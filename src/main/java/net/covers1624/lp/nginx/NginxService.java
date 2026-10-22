@@ -1,6 +1,5 @@
 package net.covers1624.lp.nginx;
 
-import com.google.common.base.Charsets;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import net.covers1624.lp.Config;
 import net.covers1624.lp.ContainerConfiguration;
@@ -15,6 +14,7 @@ import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
@@ -256,7 +256,7 @@ public class NginxService {
         Path backup = backupConfigs();
         boolean testSuccess = false;
         try {
-            Files.writeString(IOUtils.makeParents(hostConfig(host.host)), host.config, Charsets.UTF_8);
+            Files.writeString(IOUtils.makeParents(hostConfig(host.host)), host.config, StandardCharsets.UTF_8);
             testSuccess = nginxProcess.testConfig();
         } catch (IOException ex) {
             LOGGER.error(DISCORD, "Failed to run config test for {}", host.host, ex);
