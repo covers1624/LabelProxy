@@ -526,9 +526,6 @@ public class NginxService {
                 emit("ssl_session_cache shared:SSL:1m");
                 emit("ssl_session_tickets off");
                 emitBlank();
-                emit("ssl_stapling on");
-                emit("ssl_stapling_verify on");
-                emitBlank();
                 emit("resolver 1.1.1.1 8.8.8.8 valid=300s");
                 emit("resolver_timeout 5s");
                 emitBlank();
