@@ -1,4 +1,4 @@
-FROM nginx:1.31.3-trixie
+FROM nginx:1.31.9-trixie
 
 RUN \
 	curl -L https://packages.adoptium.net/artifactory/api/gpg/key/public | tee /etc/apt/keyrings/adoptium.asc \
