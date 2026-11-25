@@ -41,7 +41,6 @@ import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 
@@ -263,35 +262,32 @@ public class LetsEncryptService {
         }
         LOGGER.info("Authorized! Awaiting order ready..");
         try {
-            order.waitUntilReady(Duration.ofMinutes(5));
+            var status = order.waitUntilReady(Duration.ofMinutes(5));
+            if (status != Status.READY) {
+                throw new AcmeException("Order not ready. Got: " + status + ", error: " + order.getError().orElse(null));
+            }
         } catch (InterruptedException ex) {
             throw new AcmeException("Interrupted waiting for order to be ready.", ex);
         }
 
-        LOGGER.info("Processing order..");
+        LOGGER.info("Generating keypair.");
 
         KeyPair domainKey = KeyPairUtils.createECKeyPair("secp256r1");
+
+        LOGGER.info("Executing order.");
         CSRBuilder[] csrBuilder = { null };
         order.execute(domainKey, csr -> csrBuilder[0] = csr);
-        int waitSteps = 20;
-        try {
-            while (order.getStatus() != Status.VALID && waitSteps-- > 0) {
-                if (order.getStatus() == Status.INVALID) {
-                    throw new AcmeException("Order Failed. " + order.getError().orElse(null));
-                }
 
-                var retryTime = order.fetch()
-                                .orElseGet(() -> Instant.now().plus(3, ChronoUnit.SECONDS));
-                var downtime = Duration.between(Instant.now(), retryTime);
-                if (downtime.isPositive()) {
-                    Thread.sleep(downtime);
-                }
-            }
-            if (order.getStatus() != Status.VALID) {
-                throw new AcmeException("Failed Order, timeout reached..");
+        LOGGER.info("Awaiting order completion.");
+
+        try {
+            // Stupid long timeout, but whatever.
+            var status = order.waitForCompletion(Duration.ofMinutes(15));
+            if (status != Status.VALID) {
+                throw new AcmeException("Order not valid. Got: " + status + ", error: " + order.getError().orElse(null));
             }
         } catch (InterruptedException ex) {
-            throw new AcmeException("Interrupted whilst waiting for order.", ex);
+            throw new AcmeException("Interrupted whilst waiting for order completion.", ex);
         }
         Certificate certificate = order.getCertificate();
         LOGGER.info("Order succeeded!");
@@ -396,6 +392,7 @@ public class LetsEncryptService {
             }
             if (challenge.getStatus() != Status.VALID) {
                 LOGGER.error(DISCORD, " Failed DNS challenge. Timeout reached.");
+                return false;
             }
         } catch (InterruptedException ex) {
             LOGGER.error(DISCORD, " Interrupted whilst waiting for challenge.", ex);

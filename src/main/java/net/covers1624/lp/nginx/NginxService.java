@@ -220,7 +220,7 @@ public class NginxService {
                 }
             }, NGINX_APPLY_EXECUTOR);
             future.exceptionally(ex -> {
-                LOGGER.error("DISCORD, Failed to remove dead nginx hosts and reload.", ex);
+                LOGGER.error(DISCORD, "Failed to remove dead nginx hosts and reload.", ex);
                 return null;
             });
         }
